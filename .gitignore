@@ -1,0 +1,6 @@
+*.aux
+*.log
+*.pdf
+*.gz
+*.ibc
+vimp-hs/.stack-work

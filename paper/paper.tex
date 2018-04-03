@@ -1,0 +1,50 @@
+\documentclass[letterpaper,10pt,onecolumn]{article}
+
+\usepackage{setspace} 
+\singlespacing
+\usepackage{graphicx}                                        
+\usepackage{amssymb}                                         
+\usepackage{amsmath}                                         
+\usepackage{amsthm}
+\usepackage{url}         
+\usepackage{tabu}                             
+
+\usepackage{geometry}
+\geometry{textheight=9.5in, textwidth=7in}
+\parindent = 0.0 in
+\parskip = 0.1 in
+\title{Imperative Programming with Variational Effects}
+\author{Alex Grasley}
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+At its most basic level, all computation can be viewed as a function from a set of inputs to some
+output. For example, consider a function that computes the cost of a car given certain options such
+as color, engine size, and warranty. In Haskell we might denote the type of this function as
+\texttt{Color -> EngineSize -> Warranty -> Cost}. Given this function, suppose we want to present
+a customer with the cost of a car at different warranty levels. We must then run the function a number of
+times equal to the number of warranty levels, varying the warranty parameter while keeping the other
+parameters constant.
+
+This situation is not ideal. The result is that we repeat work calculating cost based off of color and engine
+size every time we try a new warranty variant. Any calculations that are shared across executions are
+lost under this model. We would also like a way to explicitly represent in our language what it is 
+we are doing when we perform multiple executions and collect the results. That is, we would like a way
+to explicitly represent variation as a first-class construct in our language. We can imagine a function
+of type \texttt{Color -> EngineSize -> V Warranty -> V Cost} where \texttt{V Warranty} represents a
+variational warranty which maps to a variational cost as the result of the function. Because we can
+now model variational data explicitly, we can also take advantage of any sharing that occurs between
+executions, only branching our execution where we encounter variation.
+
+% TODO introduce choice calculus
+
+\section{Motivation}
+
+
+
+
+
+\end{document}
