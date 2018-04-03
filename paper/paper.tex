@@ -6,6 +6,8 @@
 \usepackage{amssymb}                                         
 \usepackage{amsmath}                                         
 \usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{algorithmic}
 \usepackage{url}         
 \usepackage{tabu}                             
 
@@ -42,6 +44,65 @@ executions, only branching our execution where we encounter variation.
 % TODO introduce choice calculus
 
 \section{Motivation}
+
+\subsection{Exceptions}
+
+Exceptions are a common type of effect that proves challenging in a variational setting.
+Consider the following program:
+
+\begin{algorithmic}
+\STATE \ldots
+\IF{$y$ is true}
+\STATE{\textbf{throw} $e$}
+\ENDIF
+\STATE{$x \coloneqq$ myFunc()}
+\end{algorithmic}
+
+In a non-variational context, the behavior of this program should be clear.
+If the variable $y$ evaluates to \textbf{true}, then an error is thrown with value
+$e$. At this point evaluation should stop, meaning that the variable $x$ is never
+assigned the value 2 in the final statement. This effect of halting execution and
+returning an error value is the essence of exceptions in non-variational settings.
+
+Now we consider the behavior of the same program in a variational context.
+Suppose that the variable $y$ evaluates to the variational value
+$A \langle \textbf{true}, \textbf{false} \rangle$. This means that in variant $A$ we
+would evaluate the body of the if statement, while ignoring it otherwise. Therefore,
+under variant $A$ we throw an exception, but otherwise we continue on to the next
+final statement.
+
+Clearly maintaining the same behavior from the non-variational setting in the variational setting
+results in problems. If we halt execution whenever an exception is
+thrown in any variant, then we stop the evaluation of variants that never encountered an error,
+as in our example for the variant $\neg A$.
+
+We also can't simply continue evaluation
+in every variant regardless of whether or not we have encountered an error. This would be
+a clear violation of the behavior we expect from exceptions.
+Suppose that calling myFunc normally would evaluate to the variational value $A\langle 1, 2 \rangle$.
+Additionally, suppose that arriving at the value 1 in variant $A$ is a fairly expensive action.
+Because we know that variant $A$ will ultimately evaluate to the thrown exception $e$, we would
+like to avoid this cost, mirroring how throwing an exception short-circuits evaluation in the
+non-variational setting. 
+
+Another problem concerns how to keep track of which variants are in error states and what
+the error values are. If we want to avoid the cost of pointless evaluation in variants that are in an error
+state, we must have some efficient way of determining when evaluation is about to enter such a variant.
+In the non-variational context we have no need to store and remember error values during evaluation
+because we simply return the error value immediately when it is thrown. In the variational context, we
+must now store these values while we continue to evaluate variants that are not in an error state.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
