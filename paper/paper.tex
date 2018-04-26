@@ -11,6 +11,8 @@
 \usepackage{url}         
 \usepackage{tabu}                             
 
+\newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
+
 \usepackage{geometry}
 \geometry{textheight=9.5in, textwidth=7in}
 \parindent = 0.0 in
@@ -41,7 +43,155 @@ variational warranty which maps to a variational cost as the result of the funct
 now model variational data explicitly, we can also take advantage of any sharing that occurs between
 executions, only branching our execution where we encounter variation.
 
-% TODO introduce choice calculus
+\section{Background}
+
+\subsection{The choice calculus}
+
+In order to formally represent choices in our programs we employ the choice
+calculus \cite{ericthesis,erwig2011choice}. The fundamental unit of the choice calculus is
+the \emph{choice}, which is a set of values called \emph{alternatives}.
+There are many data structures that can be used to model
+choices \cite{walkingshaw2014variational}, so we begin with \emph{tag trees}, one of
+the simplest to understand. Tag trees represent the set of alternatives as a binary tree, with concrete
+values at the leaves of the tree. We give each node of the tree a name or tag. We call these
+tags the \emph{dimensions} of the choices. Notationally we represent these tag trees
+via angle brackets. For example, a choice in dimension $A$
+between the values $1$ and $2$ is written $\tagtree{A}{1}{2}$. Choices can also be nested inside
+each other: $\tagtree{B}{\tagtree{A}{1}{2}}{3}$.
+
+The \emph{selection} operation on a choice eliminates a particular dimension. Each representation
+of choices defines a function \emph{select} that takes a \emph{selector} and a variational value and
+eliminates the dimension specified by the selector in the value. For a choice with tag $A$, we represent the
+selectors as $A$ and $\neg A$, which select for the left and right alternatives, respectively.
+For example, the operation $select(\neg A, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the
+variational value $\tagtree{B}{2}{3}$. Selection is \emph{synchronized} for a given
+dimension, meaning that two choices in the same value or expression that share a dimension must always
+select the same alternative. For example, in the expression $\tagtree{A}{1}{2}+\tagtree{A}{3}{4}$,
+the only possible selections are $1+3$ and $2+4$, while $1+4$ and $2+3$ can never occur due
+to synchronization.
+
+We say that a choice is $configured$ when all dimensions
+have been eliminated, yielding a plain value without choices. We call these resulting plain values
+\emph{variants}. Similar to selection, we define a function \emph{configure} which takes a
+\emph{configuration} and a variational value and produces a variant. An easy way to define
+configurations for tag trees is as a set of selections for all dimensions. For example, the operation
+$configure(\{\neg A,B\}, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the variant $2$.
+
+\subsection{Different choice representations}
+
+Having established tag trees as a simple yet capable representation of choices, we now
+examine other data structures that can represent choices. One way of looking at tags
+as they are defined above is as boolean variables. Under this view, selection takes a boolean
+formula as a selector and checks if that formula implies that a choice's tag is true or false.
+Tag trees as we have defined them greatly restrict the possible boolean formulas that can act
+as selectors and tags. Tags must only be a plain boolean variable and selectors can be either
+plain boolean variables or the negation of a boolean variable. If we relax these restrictions by
+allowing tags and selectors to be boolean formulas from a proper boolean algebra
+consisting of boolean literals, variables, negation, conjunction, and disjunction we achieve a
+more expressive form of tag tree that we call \emph{formula trees} \cite{walkingshaw2014projectional,walkingshaw2014variational}.
+For an example of formula
+trees in action, consider the operation $select(C \wedge \neg A , A \wedge B \langle 1, 2 \rangle)$,
+which produces $2$ because of the implication: $C \wedge \neg A \Rightarrow \neg(A \wedge B)$.
+
+Replacing plain tags with formulas has several advantages. For example, we can simplify tag trees like
+$\tagtree{B}{1}{\tagtree{A}{1}{2}}$ to the more compact form $\tagtree{(B \vee A)}{1}{2}$. This is just
+one of a number of optimizations that are made possible by representing dimensions as formulas
+\cite{walkingshaw2014projectional,hubbard2016formula}. Formula choices are also more convenient
+for maintaining a variational context during execution of a program, a fact that will become
+more obvious and relevant when we present our work on variational imperative programming later in
+this work. Despite these advantages over plain tags, formulas incur some cost by introducing boolean
+satisfiability problems into many common operations. This requires integrating a SAT solver into the
+implementation of variational data structures involving formulas. However, thanks to the
+efficiency of modern SAT solvers, often the worst-case NP-complete performance of these satisfiability
+problems can be avoided.
+
+While formula trees allow for optimizations that eliminate some redundancy found in tag trees,
+they still allow for the construction of trees with redundant alternatives. If we wish to disallow the
+construction of a choice with redundant alternatives we use our final choice data structure,
+\emph{formula maps} \cite{walkingshaw2014variational}.
+A formula map represents choices as a mapping from unique alternatives to formulas, eliminating the
+possibility for redundant alternatives. The tag tree $\tagtree{C}{\tagtree{A}{1}{2}}{\tagtree{B}{2}{3}}$
+corresponds to the formula map 
+$\{1 \Rightarrow A \wedge C, 2 \Rightarrow \neg A \vee B, 3 \Rightarrow \neg B \wedge \neg C\}$.
+We require all formula values in the formula map to be disjoint, with their disjoint union as the total
+configuration space for the boolean variables contained within it. % how to phrase this?
+
+Formula maps assure us that there is no redundancy, but at the significant cost of maintaining this
+invariant when formula maps are created or updated. This requires potentially even more interaction
+with satisfiability problems than formula trees. Often it is more advantageous define a \emph{join}
+operation that eliminates redundancy in a formula tree and then to identify the parts of
+a variational program that are particularly sensitive to redundancy and insert calls to \emph{join}
+at these points.  
+
+\subsection{Properties of choices}
+
+% sharing is desirable. what is sharing?
+The choice calculus gives us several desirable properties for variational programs.
+The first is \emph{sharing}. A naive approach to executing a variational program is simply to
+configure the variational program in order to produce each variant and run them all sequentially.
+For a program with $n$ dimensions this results in $2^n$ variants that must be executed. Crucially,
+the naive approach must recompute any common elements shared between variants. Embedding
+choices in our program, combined with a variability-aware model of execution allows us to exploit this
+inherent sharing, greatly improving the efficiency of executing a variational program.
+
+% correctness and the commuting diagram
+Another property of choices and variation that we are interested in is \emph{correctness}. In order
+to take advantage of the benefits of sharing, we must develop a variability-aware model of execution
+that produces variational values as its result. In order to determine whether our variational results
+are correct we need a way to relate them back to the individual variants they represent.
+
+\subsection{Variation in pure expressions}
+
+% describe general procedure for introducing variation to pure expressions
+
+    % maybe this includes briefly describing functor, applicative, monad instances
+
+% leave off with asking about side-effectful expressions
+
+
+
+%\subsection{A Formal Model for Variation}
+%
+%We would first like to formally
+%establish what it is we mean by variation and how it behaves. We begin with a non-variational
+%\textit{object language} which we would like to transform into a variational language. We define
+%$\Sigma$ to be
+%the set of types in our object language, with members $T,U$. We define $F$ to be the set of
+%operations defined for values in our object language, which have the type $T \rightarrow U$ for any
+%$T,U \in \Sigma$. 
+%%For example, suppose we are working with a simple object language representing
+%%basic integer arithmetic and boolean conditions on integers. We would represent this object language
+%%as $\Sigma = \{\text{Int},\text{Bool},(a,b)\}, F = \{add : (\text{Int},\text{Int}) \rightarrow \text{Int},
+%%not : \text{Bool} \rightarrow \text{Bool}, and : (\text{Bool},\text{Bool}) \rightarrow \text{Bool},
+%%less : (\text{Int},\text{Int}) \rightarrow \text{Bool} \}$.
+%
+%The next step is to begin to define the variational counterpart to our object language. We define
+%the set $\Omega$ to be the set of types in our new language, with members $V,W$. $G$ is the set
+%of operations defined for values of our new variational language, which have the type $V \rightarrow W$
+%for any $V,W \in \Omega$. Next, we define two relations that map the object language to its variational
+%counterpart. $\phi : \Sigma \rightarrow \Omega$ is a function mapping types in the object language to
+%corresponding variational types. $\theta : F \rightarrow G$ similarly maps operations in the object
+%language to variational operations in the new language, such that for any operation
+%$f \in F$ with type $T \rightarrow U$, $\theta(f) = g, g \in G$, where the type of $g$ is $\phi(T) \rightarrow \phi(U)$. 
+%
+%% TODO continue running example
+%
+%At this point, we are of course missing a crucial component. All that we have done is map one language
+%to another, but their behavior and relationship to each other is completely arbitrary. We need a way
+%to express that computations in the variational language correspond to computations in the object
+%language in a systematic way. To this end, we introduce a type of configurations $C$ and a function
+%$configure : (\forall T \in \Sigma). (C,V) \rightarrow T, \phi(T) = V$, which takes a variational value and
+%a configuration and produces a corresponding value in the object language. In other words, the function
+%\textit{configure} extracts a particular variant contained within a variational value.
+%
+%Finally, we use \textit{configure} to constrain the relationship between variational and object language.
+%To do so, we define the following law.
+%Given a configuration $c$, an operation $(f : T \rightarrow U) \in F$, and a variational value $v : V$, where $\phi(T) = V$,
+%a mapping between variational and object language is correct if 
+%$f(configure(c,v)) = configure(c,\theta(f)(v))$ holds for all possible values of $c$, $f$, and $v$.
+
+
+
 
 \section{Motivation}
 
@@ -51,7 +201,7 @@ Exceptions are a common type of effect that proves challenging in a variational 
 Consider the following program:
 
 \begin{algorithmic}
-\STATE \ldots
+\STATE $y \coloneqq$ myFn()
 \IF{$y$ is true}
 \STATE{\textbf{throw} $e$}
 \ENDIF
@@ -92,7 +242,8 @@ In the non-variational context we have no need to store and remember error value
 because we simply return the error value immediately when it is thrown. In the variational context, we
 must now store these values while we continue to evaluate variants that are not in an error state.
 
-
+\bibliographystyle{plain}
+\bibliography{paper}
 
 
 
