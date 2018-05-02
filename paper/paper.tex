@@ -8,7 +8,10 @@
 \usepackage{amsthm}
 \usepackage{mathtools}
 \usepackage{algorithmic}
-\usepackage{url}         
+\usepackage{url}
+\usepackage{tikz}         
+\usetikzlibrary{matrix}
+\usepackage{listings}
 \usepackage{tabu}                             
 
 \newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
@@ -60,10 +63,10 @@ between the values $1$ and $2$ is written $\tagtree{A}{1}{2}$. Choices can also 
 each other: $\tagtree{B}{\tagtree{A}{1}{2}}{3}$.
 
 The \emph{selection} operation on a choice eliminates a particular dimension. Each representation
-of choices defines a function \emph{select} that takes a \emph{selector} and a variational value and
+of choices defines a function \emph{sel} that takes a \emph{selector} and a variational value and
 eliminates the dimension specified by the selector in the value. For a choice with tag $A$, we represent the
 selectors as $A$ and $\neg A$, which select for the left and right alternatives, respectively.
-For example, the operation $select(\neg A, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the
+For example, the operation $sel(\neg A, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the
 variational value $\tagtree{B}{2}{3}$. Selection is \emph{synchronized} for a given
 dimension, meaning that two choices in the same value or expression that share a dimension must always
 select the same alternative. For example, in the expression $\tagtree{A}{1}{2}+\tagtree{A}{3}{4}$,
@@ -72,10 +75,10 @@ to synchronization.
 
 We say that a choice is $configured$ when all dimensions
 have been eliminated, yielding a plain value without choices. We call these resulting plain values
-\emph{variants}. Similar to selection, we define a function \emph{configure} which takes a
+\emph{variants}. Similar to selection, we define a function \emph{conf} which takes a
 \emph{configuration} and a variational value and produces a variant. An easy way to define
 configurations for tag trees is as a set of selections for all dimensions. For example, the operation
-$configure(\{\neg A,B\}, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the variant $2$.
+$conf(\{\neg A,B\}, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the variant $2$.
 
 \subsection{Different choice representations}
 
@@ -83,6 +86,9 @@ Having established tag trees as a simple yet capable representation of choices, 
 examine other data structures that can represent choices. One way of looking at tags
 as they are defined above is as boolean variables. Under this view, selection takes a boolean
 formula as a selector and checks if that formula implies that a choice's tag is true or false.
+If the formula implies that the tag's boolean variable is true, the left alternative is selected;
+conversely, if it implies false, then the right alternative is selected.
+
 Tag trees as we have defined them greatly restrict the possible boolean formulas that can act
 as selectors and tags. Tags must only be a plain boolean variable and selectors can be either
 plain boolean variables or the negation of a boolean variable. If we relax these restrictions by
@@ -90,7 +96,7 @@ allowing tags and selectors to be boolean formulas from a proper boolean algebra
 consisting of boolean literals, variables, negation, conjunction, and disjunction we achieve a
 more expressive form of tag tree that we call \emph{formula trees} \cite{walkingshaw2014projectional,walkingshaw2014variational}.
 For an example of formula
-trees in action, consider the operation $select(C \wedge \neg A , A \wedge B \langle 1, 2 \rangle)$,
+trees in action, consider the operation $sel(C \wedge \neg A , A \wedge B \langle 1, 2 \rangle)$,
 which produces $2$ because of the implication: $C \wedge \neg A \Rightarrow \neg(A \wedge B)$.
 
 Replacing plain tags with formulas has several advantages. For example, we can simplify tag trees like
@@ -98,16 +104,15 @@ $\tagtree{B}{1}{\tagtree{A}{1}{2}}$ to the more compact form $\tagtree{(B \vee A
 one of a number of optimizations that are made possible by representing dimensions as formulas
 \cite{walkingshaw2014projectional,hubbard2016formula}. Formula choices are also more convenient
 for maintaining a variational context during execution of a program, a fact that will become
-more obvious and relevant when we present our work on variational imperative programming later in
+more relevant when we present our work on variational imperative programming later in
 this work. Despite these advantages over plain tags, formulas incur some cost by introducing boolean
-satisfiability problems into many common operations. This requires integrating a SAT solver into the
-implementation of variational data structures involving formulas. However, thanks to the
+satisfiability problems into many common operations, which is an NP-complete problem. However, thanks to improvements in the
 efficiency of modern SAT solvers, often the worst-case NP-complete performance of these satisfiability
 problems can be avoided.
 
-While formula trees allow for optimizations that eliminate some redundancy found in tag trees,
-they still allow for the construction of trees with redundant alternatives. If we wish to disallow the
-construction of a choice with redundant alternatives we use our final choice data structure,
+While formula trees allow for optimizations that eliminate redundancy found in tag trees,
+they still permit the construction of trees with redundant alternatives. If we wish to disallow such
+redundancy entirely we use our final choice data structure,
 \emph{formula maps} \cite{walkingshaw2014variational}.
 A formula map represents choices as a mapping from unique alternatives to formulas, eliminating the
 possibility for redundant alternatives. The tag tree $\tagtree{C}{\tagtree{A}{1}{2}}{\tagtree{B}{2}{3}}$
@@ -118,7 +123,7 @@ configuration space for the boolean variables contained within it. % how to phra
 
 Formula maps assure us that there is no redundancy, but at the significant cost of maintaining this
 invariant when formula maps are created or updated. This requires potentially even more interaction
-with satisfiability problems than formula trees. Often it is more advantageous define a \emph{join}
+with satisfiability problems than formula trees. Often it is more advantageous to define a \emph{join}
 operation that eliminates redundancy in a formula tree and then to identify the parts of
 a variational program that are particularly sensitive to redundancy and insert calls to \emph{join}
 at these points.  
@@ -132,7 +137,8 @@ configure the variational program in order to produce each variant and run them 
 For a program with $n$ dimensions this results in $2^n$ variants that must be executed. Crucially,
 the naive approach must recompute any common elements shared between variants. Embedding
 choices in our program, combined with a variability-aware model of execution allows us to exploit this
-inherent sharing, greatly improving the efficiency of executing a variational program.
+inherent sharing by only computing shared components once, greatly improving the efficiency of
+executing a variational program.
 
 % correctness and the commuting diagram
 Another property of choices and variation that we are interested in is \emph{correctness}. In order
@@ -140,60 +146,44 @@ to take advantage of the benefits of sharing, we must develop a variability-awar
 that produces variational values as its result. In order to determine whether our variational results
 are correct we need a way to relate them back to the individual variants they represent.
 
-\subsection{Variation in pure expressions}
+Given a function $f : T \rightarrow U$ and its variational counterpart $g : V \rightarrow W$, we say that
+the relationship between the two is correct if for some configuration $c$ the following equality holds:
+$conf\ c \circ g = f \circ conf\ c$ \cite{hubbard2016formula}. Put simply, configuring the result
+of passing a variational value to a variational function should be the same as pre-configuring the input
+and the function itself. This can be visualized as the following commuting diagram:
 
-% describe general procedure for introducing variation to pure expressions
-
-    % maybe this includes briefly describing functor, applicative, monad instances
-
-% leave off with asking about side-effectful expressions
-
-
-
-%\subsection{A Formal Model for Variation}
-%
-%We would first like to formally
-%establish what it is we mean by variation and how it behaves. We begin with a non-variational
-%\textit{object language} which we would like to transform into a variational language. We define
-%$\Sigma$ to be
-%the set of types in our object language, with members $T,U$. We define $F$ to be the set of
-%operations defined for values in our object language, which have the type $T \rightarrow U$ for any
-%$T,U \in \Sigma$. 
-%%For example, suppose we are working with a simple object language representing
-%%basic integer arithmetic and boolean conditions on integers. We would represent this object language
-%%as $\Sigma = \{\text{Int},\text{Bool},(a,b)\}, F = \{add : (\text{Int},\text{Int}) \rightarrow \text{Int},
-%%not : \text{Bool} \rightarrow \text{Bool}, and : (\text{Bool},\text{Bool}) \rightarrow \text{Bool},
-%%less : (\text{Int},\text{Int}) \rightarrow \text{Bool} \}$.
-%
-%The next step is to begin to define the variational counterpart to our object language. We define
-%the set $\Omega$ to be the set of types in our new language, with members $V,W$. $G$ is the set
-%of operations defined for values of our new variational language, which have the type $V \rightarrow W$
-%for any $V,W \in \Omega$. Next, we define two relations that map the object language to its variational
-%counterpart. $\phi : \Sigma \rightarrow \Omega$ is a function mapping types in the object language to
-%corresponding variational types. $\theta : F \rightarrow G$ similarly maps operations in the object
-%language to variational operations in the new language, such that for any operation
-%$f \in F$ with type $T \rightarrow U$, $\theta(f) = g, g \in G$, where the type of $g$ is $\phi(T) \rightarrow \phi(U)$. 
-%
-%% TODO continue running example
-%
-%At this point, we are of course missing a crucial component. All that we have done is map one language
-%to another, but their behavior and relationship to each other is completely arbitrary. We need a way
-%to express that computations in the variational language correspond to computations in the object
-%language in a systematic way. To this end, we introduce a type of configurations $C$ and a function
-%$configure : (\forall T \in \Sigma). (C,V) \rightarrow T, \phi(T) = V$, which takes a variational value and
-%a configuration and produces a corresponding value in the object language. In other words, the function
-%\textit{configure} extracts a particular variant contained within a variational value.
-%
-%Finally, we use \textit{configure} to constrain the relationship between variational and object language.
-%To do so, we define the following law.
-%Given a configuration $c$, an operation $(f : T \rightarrow U) \in F$, and a variational value $v : V$, where $\phi(T) = V$,
-%a mapping between variational and object language is correct if 
-%$f(configure(c,v)) = configure(c,\theta(f)(v))$ holds for all possible values of $c$, $f$, and $v$.
-
-
-
+\begin{center}
+\begin{tikzpicture}
+  \matrix (m) [matrix of math nodes,row sep=3em,column sep=4em,minimum width=2em]
+  {
+     V & W \\
+     T & U \\};
+  \path[-stealth]
+    (m-1-1) edge node [left] {$conf\ c$} (m-2-1)
+            edge node [above] {$g$} (m-1-2)
+    (m-2-1.east|-m-2-2) edge node [below] {$f$}
+             (m-2-2)
+    (m-1-2) edge node [right] {$conf\ c$} (m-2-2)
+            ;
+\end{tikzpicture}
+\end{center}
 
 \section{Motivation}
+
+In order to take advantage of the benefits of sharing provided by choices, we must develop variational
+models of execution for a given language. We begin by showing that defining variational execution in a pure,
+side-effect free evaluation context is a fairly straight-forward exercise before turning to the much more
+difficult problem of variational execution with side effects.
+
+\subsection{Pure variational execution}
+
+If we do not have to worry about side effects in our language that we wish to introduce variation to
+our task is comparatively easy. We begin by considering a simple arithmetic expression language:
+
+$a ::= n\ |\ a + a\ |\ a * a$
+
+TODO: demonstrate how this works for pure expressions
+
 
 \subsection{Exceptions}
 
@@ -201,38 +191,37 @@ Exceptions are a common type of effect that proves challenging in a variational 
 Consider the following program:
 
 \begin{algorithmic}
-\STATE $y \coloneqq$ myFn()
+\STATE $y \coloneqq$ getSecret()
 \IF{$y$ is true}
 \STATE{\textbf{throw} $e$}
 \ENDIF
-\STATE{$x \coloneqq$ myFunc()}
+\STATE{$x \coloneqq$ expensiveFn()}
 \end{algorithmic}
 
 In a non-variational context, the behavior of this program should be clear.
 If the variable $y$ evaluates to \textbf{true}, then an error is thrown with value
 $e$. At this point evaluation should stop, meaning that the variable $x$ is never
-assigned the value 2 in the final statement. This effect of halting execution and
+assigned in the final statement, avoiding the costly computation of \texttt{expensiveFn}. This effect of halting execution and
 returning an error value is the essence of exceptions in non-variational settings.
 
 Now we consider the behavior of the same program in a variational context.
 Suppose that the variable $y$ evaluates to the variational value
-$A \langle \textbf{true}, \textbf{false} \rangle$. This means that in variant $A$ we
+$A \langle \textbf{true}, \textbf{false} \rangle$. This means that in the left alternative of $A$ we
 would evaluate the body of the if statement, while ignoring it otherwise. Therefore,
-under variant $A$ we throw an exception, but otherwise we continue on to the next
+in the left alternative of $A$ we throw an exception, but otherwise we continue on to the
 final statement.
 
 Clearly maintaining the same behavior from the non-variational setting in the variational setting
-results in problems. If we halt execution whenever an exception is
-thrown in any variant, then we stop the evaluation of variants that never encountered an error,
-as in our example for the variant $\neg A$.
+violates correctness. If we halt execution whenever an exception is
+thrown in any variant, then we also stop the evaluation of variants that never encountered an error,
+as in our example for the case $\neg A$. Correctness dictates that variants that never encountered
+an exception should complete their execution uninhibited.
 
 We also can't simply continue evaluation
-in every variant regardless of whether or not we have encountered an error. This would be
-a clear violation of the behavior we expect from exceptions.
-Suppose that calling myFunc normally would evaluate to the variational value $A\langle 1, 2 \rangle$.
-Additionally, suppose that arriving at the value 1 in variant $A$ is a fairly expensive action.
-Because we know that variant $A$ will ultimately evaluate to the thrown exception $e$, we would
-like to avoid this cost, mirroring how throwing an exception short-circuits evaluation in the
+in every variant regardless of whether or not we have encountered an error.
+Suppose that calling \texttt{expensiveFn} normally would evaluate to the variational value $A\langle 1, 2 \rangle$, but at considerable computational cost in both alternatives.
+Because we know that the left alternative of $A$ will ultimately evaluate to the thrown exception $e$, we would
+like to avoid the cost involved in computing the value 1 that we will just throw away later, mirroring how throwing an exception short-circuits evaluation in the
 non-variational setting. 
 
 Another problem concerns how to keep track of which variants are in error states and what
