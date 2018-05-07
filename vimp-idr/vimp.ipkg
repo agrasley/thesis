@@ -1,0 +1,7 @@
+package vimp
+
+opts = "--package contrib --total"
+
+modules = Env
+        , Dim
+        , Sat

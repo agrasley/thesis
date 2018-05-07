@@ -1,37 +1,33 @@
 module V
 
+import Dim
+import Sat
 
--- Variational Imp Expressions
+%access public export
 
-data Dim : Type where
-DLit : Bool -> Dim
-DRef : String -> Dim
-DNot : Dim -> Dim
-DAnd : Dim -> Dim -> Dim
-DOr  : Dim -> Dim -> Dim
+data VTree : Type -> Type where
+  One : a -> VTree a
+  Chc : Dim -> VTree a -> VTree a -> VTree a
 
-VCtx : Type
-VCtx = Dim
+implementation Functor VTree where
+  map f (One a) = One (f a)
+  map f (Chc d l r) = Chc d (map f l) (map f r)
 
-data V : Type -> Type where
-One : a -> V a
-Chc : Dim -> V a -> V a -> V a
+implementation Applicative VTree where
+  pure = One
+  (One f) <*> v = map f v
+  (Chc d l r) <*> v = Chc d (l <*> v) (r <*> v)
 
-data AExprV : Type where
-NV : V Int -> AExprV
-VarV : V String -> AExprV
-AddV : V AExprV -> V AExprV -> AExprV
+implementation Monad VTree where
+  (One a) >>= f = f a
+  (Chc d l r) >>= f = Chc d (l >>= f) (r >>= f)
 
-data BExprV : Type where
-BV : V Bool -> BExprV
-NotV : V BExprV -> BExprV
-AndV : V BExprV -> V BExprV -> BExprV
-LessV : V AExprV -> V AExprV -> BExprV
-
-VState : Type
-VState = List (String,V (Maybe Int))
-
---data SSAExpr : (VCtx,State,AExpr) -> (VCtx,State,AExpr) -> Type where
---  AddOne : SSAExpr (v,s,Add (One (N (One ))))
-
--- Testing
+selTree : Dim -> VTree a -> VTree a
+selTree _ v@(One _) = v
+selTree d (Chc d' l r) =
+  if implies d d' then
+    selTree d l
+  else if implies d (DNot d') then
+    selTree d r
+  else
+    Chc d' (selTree d l) (selTree d r)
