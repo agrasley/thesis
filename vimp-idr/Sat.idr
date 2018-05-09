@@ -3,6 +3,8 @@ module Sat
 import Dim
 import Data.SortedSet
 import Debug.Error
+import Env
+import Data.List
 
 %include C "sat.h"
 %include C "sat.o"
@@ -92,3 +94,30 @@ equiv x y = taut (equ x y)
 
 implies : Dim -> Dim -> Bool
 implies x y = taut (imp x y)
+
+-- Type level sat
+
+SatEnv : List DimVar -> Type
+SatEnv xs = Env xs Bool
+
+data Sat : SatEnv xs -> Dim -> Type where
+  SatT : Sat env (DLit True)
+  SatR : EnvLookup {x} p env True -> Sat env (DRef x)
+  SatN : Not (Sat env d) -> Sat env (DNot d)
+  SatA : Sat env l -> Sat env r -> Sat env (DAnd l r)
+  SatOL : Sat env l -> Sat env (DOr l r)
+  SatOR : Sat env r -> Sat env (DOr l r)
+
+data Unsat : Dim -> Type where
+  MkUnsat : DimHasVar x d ->
+            EnvLookup {x} p env True ->
+            Not (Sat env d) ->
+            EnvLookup {x} p' env' False ->
+            Not (Sat env' d) ->
+            Unsat d
+
+data Taut : Dim -> Type where
+  MkTaut : Unsat (DNot d) -> Taut d
+
+data Implies : Dim -> Dim -> Type where
+  MkImplies : Taut (imp x y) -> Implies x y

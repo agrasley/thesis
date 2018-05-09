@@ -31,3 +31,13 @@ selTree d (Chc d' l r) =
     selTree d r
   else
     Chc d' (selTree d l) (selTree d r)
+
+data SelTree : Dim -> VTree a -> VTree a -> Type where
+  SelTreeOne : SelTree d (One a) (One a)
+  SelTreeL : Implies d d' -> SelTree d l l' -> SelTree d (Chc d' l r) l'
+  SelTreeR : Implies d (DNot d') -> SelTree d r r' -> SelTree d (Chc d' l r) r'
+  SelTreeBoth : Not (Implies d d') ->
+                Not (Implies d (DNot d')) ->
+                SelTree d l l' ->
+                SelTree d r r' ->
+                SelTree d (Chc d' l r) (Chc d' l' r')
