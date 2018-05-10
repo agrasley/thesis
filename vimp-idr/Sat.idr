@@ -2,9 +2,13 @@ module Sat
 
 import Dim
 import Data.SortedSet
-import Debug.Error
 import Env
 import Data.List
+
+%access public export
+
+{-
+import Debug.Error
 
 %include C "sat.h"
 %include C "sat.o"
@@ -12,15 +16,10 @@ import Data.List
 %language ElabReflection
 %access public export
 
-dimGetVars' : Dim -> SortedSet DimVar -> SortedSet DimVar
-dimGetVars' (DLit _) s = s
-dimGetVars' (DRef v) s = insert v s
-dimGetVars' (DNot d) s = dimGetVars' d s
-dimGetVars' (DAnd l r) s = dimGetVars' r (dimGetVars' l s)
-dimGetVars' (DOr l r) s = dimGetVars' r (dimGetVars' l s)
-
 dimGetVars : Dim -> SortedSet DimVar
-dimGetVars d = dimGetVars' d empty
+dimGetVars (DAnd xs) = foldr f empty xs
+  where
+    f (DOr x y _) s = union x (union y s)
 
 varsToStr : SortedSet DimVar -> String
 varsToStr = foldr (\v, s => s ++ "(declare-const " ++ v ++ " Bool)\n") ""
@@ -32,6 +31,11 @@ dimToStr' (DRef v) = v
 dimToStr' (DNot d) = "(not " ++ dimToStr' d ++ ")"
 dimToStr' (DAnd l r) = "(and " ++ dimToStr' l ++ " " ++ dimToStr' r ++ ")"
 dimToStr' (DOr l r) = "(or " ++ dimToStr' l ++ " " ++ dimToStr' r ++ ")"
+
+clToStr : Clause -> String
+clToStr (DOr x y z) = x' ++ y' ++ z'
+  where
+    x' = foldr  ""
 
 dimToStr : Dim -> String
 dimToStr d = vars ++ "(assert " ++ dimToStr' d ++ ")\n(check-sat)"
@@ -94,30 +98,31 @@ equiv x y = taut (equ x y)
 
 implies : Dim -> Dim -> Bool
 implies x y = taut (imp x y)
+-}
 
 -- Type level sat
 
-SatEnv : List DimVar -> Type
-SatEnv xs = Env xs Bool
+data SSElem : a -> SortedSet a -> Type where
+  MkSSElem : Elem x (Data.SortedSet.toList ss) -> SSElem x ss
 
-data Sat : SatEnv xs -> Dim -> Type where
-  SatT : Sat env (DLit True)
-  SatR : EnvLookup {x} p env True -> Sat env (DRef x)
-  SatN : Not (Sat env d) -> Sat env (DNot d)
-  SatA : Sat env l -> Sat env r -> Sat env (DAnd l r)
-  SatOL : Sat env l -> Sat env (DOr l r)
-  SatOR : Sat env r -> Sat env (DOr l r)
+data ResResult : Type where
+  ResT : ResResult
+  ResEnv : SortedSet DimVar -> SortedSet DimVar -> ResResult
 
-data Unsat : Dim -> Type where
-  MkUnsat : DimHasVar x d ->
-            EnvLookup {x} p env True ->
-            Not (Sat env d) ->
-            EnvLookup {x} p' env' False ->
-            Not (Sat env' d) ->
-            Unsat d
+data Resolution : List Clause -> ResResult -> Type where
+  ResStartT : SSElem True z -> Resolution [DOr x y z] ResT
+  ResStartE : Resolution [DOr x y z] (ResEnv x y)
+  ResTrue : Resolution xs res -> SSElem True z -> Resolution ((DOr x y z)::xs) res
+  ResNextT : Resolution xs ResT -> Resolution ((DOr x y z)::xs) (ResEnv x y)
+  ResNextE : Resolution xs (ResEnv a b) -> Resolution ((DOr x y z)::xs) (ResEnv (difference a y) (difference b x))
 
-data Taut : Dim -> Type where
-  MkTaut : Unsat (DNot d) -> Taut d
+data SSNonEmpty : SortedSet a -> Type where
+  MkSSNonEmpty : NonEmpty (Data.SortedSet.toList ss) -> SSNonEmpty ss
 
-data Implies : Dim -> Dim -> Type where
-  MkImplies : Taut (imp x y) -> Implies x y
+data Sat : Dim -> Type where
+  SatT : Resolution xs ResT -> Sat (DAnd xs)
+  SatE1 : SSNonEmpty x -> Resolution xs (ResEnv x y) -> Sat (DAnd xs)
+  SatE2 : SSNonEmpty y -> Resolution xs (ResEnv x y) -> Sat (DAnd xs)
+
+Unsat : Dim -> Type
+Unsat d = Not (Sat d)
