@@ -7,122 +7,45 @@ import Data.List
 
 %access public export
 
-{-
-import Debug.Error
-
-%include C "sat.h"
-%include C "sat.o"
-
-%language ElabReflection
-%access public export
-
-dimGetVars : Dim -> SortedSet DimVar
-dimGetVars (DAnd xs) = foldr f empty xs
-  where
-    f (DOr x y _) s = union x (union y s)
-
-varsToStr : SortedSet DimVar -> String
-varsToStr = foldr (\v, s => s ++ "(declare-const " ++ v ++ " Bool)\n") ""
-
-dimToStr' : Dim -> String
-dimToStr' (DLit True) = "true"
-dimToStr' (DLit False) = "false"
-dimToStr' (DRef v) = v
-dimToStr' (DNot d) = "(not " ++ dimToStr' d ++ ")"
-dimToStr' (DAnd l r) = "(and " ++ dimToStr' l ++ " " ++ dimToStr' r ++ ")"
-dimToStr' (DOr l r) = "(or " ++ dimToStr' l ++ " " ++ dimToStr' r ++ ")"
-
-clToStr : Clause -> String
-clToStr (DOr x y z) = x' ++ y' ++ z'
-  where
-    x' = foldr  ""
-
-dimToStr : Dim -> String
-dimToStr d = vars ++ "(assert " ++ dimToStr' d ++ ")\n(check-sat)"
-  where
-    vars = varsToStr . dimGetVars $ d
-
-writeFile : Dim -> IO (Either FileError ())
-writeFile d = do
-  f' <- openFile "in.smt2" WriteTruncate
-  case f' of
-    (Left e) => pure (Left e)
-    (Right f) => do
-      g' <- fPutStr f (dimToStr d)
-      case g' of
-        (Left e) => pure (Left e)
-        (Right ()) => do
-          closeFile f
-          pure (Right ())
-
-callSat : IO Int
-callSat = foreign FFI_C "runsat" (() -> IO Int) ()
-
-data SATError = SatE | FileE (FileError)
-
-satIO : Dim -> IO (Either SATError Bool)
-satIO d = do
-  res <- writeFile d
-  case res of
-    (Left e) => pure (Left (FileE e))
-    (Right ()) => do
-      i <- callSat
-      case i of
-        0 => pure (Right False)
-        1 => pure (Right True)
-        _ => pure (Left SatE)
-
-sat : Dim -> Bool
-sat d = case unsafePerformIO (satIO d) of
-  (Left SatE) => error "Error with the SAT solver"
-  (Left (FileE _)) => error "Error writing smt2 file"
-  (Right b) => b
-
-unsat : Dim -> Bool
-unsat = not . sat
-
-taut : Dim -> Bool
-taut = unsat . DNot
-
-imp : Dim -> Dim -> Dim
-imp x y = DOr (DNot x) y
-
-xor : Dim -> Dim -> Dim
-xor x y = DAnd (DOr x y) (DNot (DAnd x y))
-
-equ : Dim -> Dim -> Dim
-equ x y = DNot (xor x y)
-
-equiv : Dim -> Dim -> Bool
-equiv x y = taut (equ x y)
-
-implies : Dim -> Dim -> Bool
-implies x y = taut (imp x y)
--}
-
 -- Type level sat
 
+-- sorted set membership proofs
 data SSElem : a -> SortedSet a -> Type where
+  -- convert the set to a list and then use the builtin list membership proof
   MkSSElem : Elem x (Data.SortedSet.toList ss) -> SSElem x ss
 
+-- Resolution results
 data ResResult : Type where
+  -- The resolution is universally true
   ResT : ResResult
+  -- The resolution is true given an environment of positive and negative variables
   ResEnv : SortedSet DimVar -> SortedSet DimVar -> ResResult
 
+-- Proof that a list of clauses produces a particular ResResult
 data Resolution : List Clause -> ResResult -> Type where
-  ResStartT : SSElem True z -> Resolution [DOr x y z] ResT
-  ResStartE : Resolution [DOr x y z] (ResEnv x y)
-  ResTrue : Resolution xs res -> SSElem True z -> Resolution ((DOr x y z)::xs) res
-  ResNextT : Resolution xs ResT -> Resolution ((DOr x y z)::xs) (ResEnv x y)
-  ResNextE : Resolution xs (ResEnv a b) -> Resolution ((DOr x y z)::xs) (ResEnv (difference a y) (difference b x))
+  -- The last element of the list contains a True literal and is universally true
+  ResStartT : SSElem True z -> Resolution [CNFOr x y z] ResT
+  -- The last element of the list is true given a variable environment
+  ResStartE : Resolution [CNFOr x y z] (ResEnv x y)
+  -- Adding a clause that is universally true doesn't change the result
+  ResTrue : Resolution xs res -> SSElem True z -> Resolution ((CNFOr x y z)::xs) res
+  -- If all previous clauses are universally true, we start the maintaining the environment here
+  ResNextT : Resolution xs ResT -> Resolution ((CNFOr x y z)::xs) (ResEnv x y)
+  -- We remove contradictory members of the variable environments when combining two environments
+  ResNextE : Resolution xs (ResEnv a b) -> Resolution ((CNFOr x y z)::xs) (ResEnv (difference a y) (difference b x))
 
+
+-- Proof that a sorted set is non empty
 data SSNonEmpty : SortedSet a -> Type where
+  -- turn it into a list and prove the list is non empty
   MkSSNonEmpty : NonEmpty (Data.SortedSet.toList ss) -> SSNonEmpty ss
 
-data Sat : Dim -> Type where
-  SatT : Resolution xs ResT -> Sat (DAnd xs)
-  SatE1 : SSNonEmpty x -> Resolution xs (ResEnv x y) -> Sat (DAnd xs)
-  SatE2 : SSNonEmpty y -> Resolution xs (ResEnv x y) -> Sat (DAnd xs)
+-- Proof that a boolean formula in CNF is satisfiable
+data Sat : CNF -> Type where
+  -- It's universally true
+  SatT : Resolution xs ResT -> Sat (CNFAnd xs)
+  SatE1 : SSNonEmpty x -> Resolution xs (ResEnv x y) -> Sat (CNFAnd xs)
+  SatE2 : SSNonEmpty y -> Resolution xs (ResEnv x y) -> Sat (CNFAnd xs)
 
-Unsat : Dim -> Type
+Unsat : CNF -> Type
 Unsat d = Not (Sat d)
