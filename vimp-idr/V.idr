@@ -1,7 +1,6 @@
 module V
 
 import Dim
-import Sat
 
 %access public export
 
@@ -22,6 +21,7 @@ implementation Monad VTree where
   (One a) >>= f = f a
   (Chc d l r) >>= f = Chc d (l >>= f) (r >>= f)
 
+{-
 selTree : Dim -> VTree a -> VTree a
 selTree _ v@(One _) = v
 selTree d (Chc d' l r) =
@@ -41,3 +41,4 @@ data SelTree : Dim -> VTree a -> VTree a -> Type where
                 SelTree d l l' ->
                 SelTree d r r' ->
                 SelTree d (Chc d' l r) (Chc d' l' r')
+-}
