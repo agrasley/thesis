@@ -2,6 +2,7 @@ module VCatchStmt
 
 import V
 import Dim
+import Data.Vect
 
 %access public export
 
@@ -30,16 +31,27 @@ ErrSt : Type
 ErrSt = Value
 
 -- The mask handles error state
-Mask : Type
-Mask = (ErrCtx, ErrSt)
+record Mask where
+  constructor MkMask
+  errCtx : ErrCtx
+  errSt  : ErrSt
 
 -- the variable state is a mapping from variable names to values
 VarSt : Type
 VarSt = List (VarName, Value)
 
 -- Stateful global context
-State : Type
-State = (VCtx, VarSt, Mask)
+record State where
+  constructor MkState
+  vCtx : VCtx
+  varSt : VarSt
+  masks : Vect (S n) Mask
+
+addToVCtx : Dim -> State -> State
+addToVCtx d s = record {vCtx = (DAnd (vCtx s) d)} s
+
+getErrCtx : State -> ErrCtx
+getErrCtx s = errCtx (head (masks s))
 
 -- variational arithmetic expression
 data AExpr : Type where
@@ -53,9 +65,18 @@ data AExpr : Type where
   AChc : Dim -> AExpr -> AExpr -> AExpr
 
 -- TODO
-data VLookup : VarName -> State -> Value -> Mask -> Type where
+data VLookup : VCtx -> VarName -> VarSt -> VTree Int -> Type where
 
-data InError : Dim -> Dim -> Type where
+data InError : VCtx -> ErrCtx -> Type where
+{-
+
+-- should this be state -> state or something more specific
+data VUpdate : VarName -> Value -> State -> State -> Type where
+
+
+insertMask : Dim -> VTree Int -> Mask -> Mask
+-- TODO
+-}
 
 liftV : (a -> b) -> VOpt a -> VOpt b
 liftV = liftA . liftA
@@ -63,37 +84,33 @@ liftV = liftA . liftA
 liftV2 : (a -> b -> c) -> VOpt a -> VOpt b -> VOpt c
 liftV2 = liftA2 . liftA2
 
+mkOpt : VTree a -> VOpt a
+mkOpt = map Just
+
 -- big step semantics for arithmetic expressions
-data BigAExpr : State -> AExpr -> Value -> Mask -> Type where
-  -- literals are easy
-  BigAN : BigAExpr (vctx,vst,m) (N i) (One (Just i)) m
-  -- lookup variables in the environment, if they don't exist
-  -- throw a builtin error
-  BigAVar : VLookup x s v m -> BigAExpr s (Var x) v m
-  -- add together two arithmetic expressions. evaluates left argument first.
-  BigAAdd : BigAExpr (vctx,vst,m) l vl m' ->
-            BigAExpr (vctx,vst,m') r vr m'' ->
-            BigAExpr (vctx,vst,m) (Add l r) (liftV2 (+) vl vr) m''
-  -- if both variants are in error states, don't do anything
-  BigAChcErrs : InError (DAnd vctx dim) ectx ->
-                InError (DAnd vctx (DNot dim)) ectx ->
-                BigAExpr (vctx,vst,(ectx,est)) (AChc dim l r) (One Nothing) (ectx,est)
-  -- if the left variant is in an error state
-  BigAChcErrL : InError (DAnd vctx dim) ectx ->
-                Not (InError (DAnd vctx (DNot dim)) ectx) ->
-                BigAExpr ((DAnd vctx (DNot dim)),vst,(ectx,est)) r vr m ->
-                BigAExpr (vctx,vst,(ectx,est)) (AChc dim l r) (Chc dim (One Nothing) vr) m
-  -- if the right variant is in an error state
-  BigAChcErrR : InError (DAnd vctx (DNot dim)) ectx ->
-                Not (InError (DAnd vctx dim) ectx) ->
-                BigAExpr ((DAnd vctx dim),vst,(ectx,est)) l vl m ->
-                BigAExpr (vctx,vst,(ectx,est)) (AChc dim l r) (Chc dim vl (One Nothing)) m
-  -- neither variant is in an error state
-  BigAChc : Not (InError (DAnd vctx dim) ectx) ->
-            Not (InError (DAnd vctx (DNot dim)) ectx') ->
-            BigAExpr ((DAnd vctx dim),vst,(ectx,est)) l vl (ectx',est') ->
-            BigAExpr ((DAnd vctx (DNot dim)),vst,(ectx',est')) r vr m'' ->
-            BigAExpr (vctx,vst,m) (AChc dim l r) (Chc dim vl vr) m''
+data BigAExpr : State -> AExpr -> Value -> Type where
+  BigAN : BigAExpr s (N i) (One (Just i))
+  BigAVar : VLookup (vCtx s) x (varSt s) vis ->
+            BigAExpr s (Var x) (mkOpt vis)
+  BigAAdd : BigAExpr s l vl ->
+            BigAExpr s r vr ->
+            BigAExpr s (Add l r) (liftV2 (+) vl vr)
+  BigAChcELR : InError (DAnd (vCtx s) d) (getErrCtx s) ->
+               InError (DAnd (vCtx s) (DNot d)) (getErrCtx s) ->
+               BigAExpr s (AChc d l r) (One Nothing)
+  BigAChcEL : InError (DAnd (vCtx s) d) (getErrCtx s) ->
+              Not (InError (DAnd (vCtx s) (DNot d)) (getErrCtx s)) ->
+              BigAExpr (addToVCtx (DNot d) s) r vr ->
+              BigAExpr s (AChc d l r) (Chc d (One Nothing) vr)
+  BigAChcER : Not (InError (DAnd (vCtx s) d) (getErrCtx s)) ->
+              InError (DAnd (vCtx s) (DNot d)) (getErrCtx s) ->
+              BigAExpr (addToVCtx d s) l vl ->
+              BigAExpr s (AChc d l r) (Chc d vl (One Nothing))
+  BigAChc : Not (InError (DAnd (vCtx s) d) (getErrCtx s)) ->
+            Not (InError (DAnd (vCtx s) (DNot d)) (getErrCtx s)) ->
+            BigAExpr (addToVCtx d s) l vl ->
+            BigAExpr (addToVCtx (DNot d) s) r vr ->
+            BigAExpr s (AChc d l r) (Chc d vl vr)
 
 -- variational boolean expressions
 data BExpr : Type where
@@ -112,16 +129,32 @@ and : Bool -> Bool -> Bool
 and True True = True
 and _ _ = False
 
--- big step semantics for boolean expressions
-data BigBExpr : State -> BExpr -> VOpt Bool -> Mask -> Type where
-  -- literals are easy
-  BigBB : BigBExpr (vctx,vst,m) (B b) (One (Just b)) m
-  -- negation
-  BigBNot : BigBExpr s b v m' -> BigBExpr s (Not b) (liftV Prelude.Bool.not v) m'
-  -- and
-  BigBAnd : BigBExpr (vctx,vst,m) l vl m' ->
-            BigBExpr (vctx,vst,m') r vr m'' ->
-            BigBExpr (vctx,vst,m) (And l r) (liftV2 VCatchStmt.and vl vr) m''
+data BigBExpr : State -> BExpr -> VOpt Bool -> Type where
+  BigBB : BigBExpr s (B b) (One (Just b))
+  BigBNot : BigBExpr s b v ->
+            BigBExpr s (Not b) (liftV Prelude.Bool.not v)
+  BigBAnd : BigBExpr s l vl ->
+            BigBExpr s r vr ->
+            BigBExpr s (And l r) (liftV2 VCatchStmt.and vl vr)
+  BigBLess : BigAExpr s l vl ->
+             BigAExpr s r vr ->
+             BigBExpr s (Less l r) (liftV2 (<) vl vr)
+  BigBChcELR : InError (DAnd (vCtx s) d) (getErrCtx s) ->
+               InError (DAnd (vCtx s) (DNot d)) (getErrCtx s) ->
+               BigBExpr s (BChc d l r) (One Nothing)
+  BigBChcEL : InError (DAnd (vCtx s) d) (getErrCtx s) ->
+              Not (InError (DAnd (vCtx s) (DNot d)) (getErrCtx s)) ->
+              BigBExpr (addToVCtx (DNot d) s) r vr ->
+              BigBExpr s (BChc d l r) (Chc d (One Nothing) vr)
+  BigBChcER : Not (InError (DAnd (vCtx s) d) (getErrCtx s)) ->
+              InError (DAnd (vCtx s) (DNot d)) (getErrCtx s) ->
+              BigBExpr (addToVCtx d s) l vl ->
+              BigBExpr s (BChc d l r) (Chc d vl (One Nothing))
+  BigBChc : Not (InError (DAnd (vCtx s) d) (getErrCtx s)) ->
+            Not (InError (DAnd (vCtx s) (DNot d)) (getErrCtx s)) ->
+            BigBExpr (addToVCtx d s) l vl ->
+            BigBExpr (addToVCtx (DNot d) s) r vr ->
+            BigBExpr s (BChc d l r) (Chc d vl vr)
 
 -- variational statements
 data Stmt : Type where
@@ -143,3 +176,5 @@ data Stmt : Type where
   SChc : Dim -> Stmt -> Stmt -> Stmt
 
 data BigStmt : State -> Stmt -> State -> Type where
+  -- skip doesn't change the state
+  BigSSkip : BigStmt s Skip s
