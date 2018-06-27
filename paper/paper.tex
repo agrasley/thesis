@@ -12,7 +12,33 @@
 \usepackage{tikz}         
 \usetikzlibrary{matrix}
 \usepackage{listings}
-\usepackage{tabu}                             
+\usepackage{tabu}
+\usepackage{mathptmx}
+\usepackage{fullpage}
+\usepackage{enumerate}
+\usepackage{fancyvrb}
+                             
+
+%%%
+%%% Formatting details
+%%%
+\sloppy
+\sloppypar
+\widowpenalty=0
+\clubpenalty=0
+\displaywidowpenalty=0
+\raggedbottom
+\pagestyle{plain}
+
+\DefineVerbatimEnvironment{program}{Verbatim}
+  {baselinestretch=1.0,xleftmargin=5mm,fontsize=\small,samepage=true}
+
+\def\denseitems{
+    \itemsep1pt plus1pt minus1pt
+    \parsep0pt plus0pt
+    \parskip0pt\topsep0pt}
+
+\newcommand{\prog}[1]{{\small\texttt{#1}}}
 
 \newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
 
@@ -28,23 +54,7 @@
 
 \section{Introduction}
 
-At its most basic level, all computation can be viewed as a function from a set of inputs to some
-output. For example, consider a function that computes the cost of a car given certain options such
-as color, engine size, and warranty. In Haskell we might denote the type of this function as
-\texttt{Color -> EngineSize -> Warranty -> Cost}. Given this function, suppose we want to present
-a customer with the cost of a car at different warranty levels. We must then run the function a number of
-times equal to the number of warranty levels, varying the warranty parameter while keeping the other
-parameters constant.
-
-This situation is not ideal. The result is that we repeat work calculating cost based off of color and engine
-size every time we try a new warranty variant. Any calculations that are shared across executions are
-lost under this model. We would also like a way to explicitly represent in our language what it is 
-we are doing when we perform multiple executions and collect the results. That is, we would like a way
-to explicitly represent variation as a first-class construct in our language. We can imagine a function
-of type \texttt{Color -> EngineSize -> V Warranty -> V Cost} where \texttt{V Warranty} represents a
-variational warranty which maps to a variational cost as the result of the function. Because we can
-now model variational data explicitly, we can also take advantage of any sharing that occurs between
-executions, only branching our execution where we encounter variation.
+%% TODO
 
 \section{Background}
 
@@ -54,20 +64,39 @@ In order to formally represent choices in our programs we employ the choice
 calculus \cite{ericthesis,erwig2011choice}. The fundamental unit of the choice calculus is
 the \emph{choice}, which is a set of values called \emph{alternatives}.
 There are many data structures that can be used to model
-choices \cite{walkingshaw2014variational}, so we begin with \emph{tag trees}, one of
-the simplest to understand. Tag trees represent the set of alternatives as a binary tree, with concrete
-values at the leaves of the tree. We give each node of the tree a name or tag. We call these
-tags the \emph{dimensions} of the choices. Notationally we represent these tag trees
-via angle brackets. For example, a choice in dimension $A$
-between the values $1$ and $2$ is written $\tagtree{A}{1}{2}$. Choices can also be nested inside
-each other: $\tagtree{B}{\tagtree{A}{1}{2}}{3}$.
+choices, but for our purposes we utilize a data structure we refer
+to as a formula tree \cite{walkingshaw2014projectional,walkingshaw2014variational}.
+Formula trees represent the set of alternatives as a binary tree, with concrete
+values at the leaves of the tree. Each node of the tree is tagged with a formula from a boolean
+algebra consisting of boolean literals, variables, negation, conjunction, and disjunction. We call these
+tags the \emph{dimensions} of the choices. Notationally we represent these choice trees
+via angle brackets. For example, a choice in dimension $A$ (where $A$ is a boolean variable)
+between the values $1$ and $2$ is written $\tagtree{A}{1}{2}$.
 
-The \emph{selection} operation on a choice eliminates a particular dimension. Each representation
-of choices defines a function \emph{sel} that takes a \emph{selector} and a variational value and
-eliminates the dimension specified by the selector in the value. For a choice with tag $A$, we represent the
-selectors as $A$ and $\neg A$, which select for the left and right alternatives, respectively.
-For example, the operation $sel(\neg A, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the
-variational value $\tagtree{B}{2}{3}$. Selection is \emph{synchronized} for a given
+Each boolean variable in a dimension can be viewed as coding for the presence or absence of a
+particular feature that we wish to vary. To continue the above example, $\tagtree{A}{1}{2}$
+represents a variational value that is $1$ when feature $A$ is present and $2$ otherwise. Because
+dimensions can be any expression from a boolean algebra, we can combine them in a way
+analogous to conditional expressions. For example, the choice $\tagtree{(A \wedge \neg B)}{1}{2}$
+is a value that represents $1$ when feature $A$ is present and $B$ is absent, and $2$ otherwise.
+
+The \emph{selection} operation on a choice can be used to eliminate dimensions. We define a function
+\emph{sel} that takes a \emph{selector} and a variational value and eliminates dimensions based off
+of the selector. For formula trees selectors are also booleans formulas, and can be seen as specifying
+a condition that is assumed to hold true. Therefore, for a given dimension and
+selector, we eliminate the choice and replace it with the left branch if the selector logically implies
+the truth of the dimension. Similarly, if the selector logically implies the falsehood of the dimension, we eliminate the choice
+and replace it with the right branch. If neither implication is valid, the choice remains untouched with
+both alternatives left intact.
+
+It is often helpful to see this selection operation in action. The operation
+$\mathit{sel}(A,\tagtree{A}{1}{2})$, can be seen as encoding the presence of feature $A$, which
+will therefore produce the value $1$ as a result. Similarly, $\mathit{sel}(\neg A,\tagtree{A}{1}{2})$ can be seen as encoding the absence of feature $A$ and will
+produce the value $2$. $\mathit{sel}(B,\tagtree{A}{1}{2})$ will result in an unchanged variational
+value $\tagtree{A}{1}{2}$ because the selector $B$ does not logically imply either the truth or falsehood
+of dimension $A$.
+
+Selection is \emph{synchronized} for a given
 dimension, meaning that two choices in the same value or expression that share a dimension must always
 select the same alternative. For example, in the expression $\tagtree{A}{1}{2}+\tagtree{A}{3}{4}$,
 the only possible selections are $1+3$ and $2+4$, while $1+4$ and $2+3$ can never occur due
@@ -75,58 +104,26 @@ to synchronization.
 
 We say that a choice is $configured$ when all dimensions
 have been eliminated, yielding a plain value without choices. We call these resulting plain values
-\emph{variants}. Similar to selection, we define a function \emph{conf} which takes a
-\emph{configuration} and a variational value and produces a variant. An easy way to define
-configurations for tag trees is as a set of selections for all dimensions. For example, the operation
-$conf(\{\neg A,B\}, \tagtree{B}{\tagtree{A}{1}{2}}{3})$ produces the variant $2$.
+\emph{variants}. We define a function \emph{conf} which takes a
+\emph{configuration} and a variational value and produces a variant. Under the view of boolean
+variables in dimensions as representing distinct features, a configuration for a formula tree gives
+an assignment for each variable present in the dimensions of the variational value being configured.
+A simple way to do this is to define a configuration as a list of the features that are present, with all
+other features assumed to be absent. In other words, configurations are a list of variables that should
+evaluate to true, will all other variables evaluating to false. Configuring a formula tree is then simply evaluating
+each dimension given the variable assignment. If the dimension evaluates to true, then the left variant
+is chosen, otherwise the right variant is chosen.
 
-\subsection{Different choice representations}
-
-Having established tag trees as a simple yet capable representation of choices, we now
-examine other data structures that can represent choices. One way of looking at tags
-as they are defined above is as boolean variables. Under this view, selection takes a boolean
-formula as a selector and checks if that formula implies that a choice's tag is true or false.
-If the formula implies that the tag's boolean variable is true, the left alternative is selected;
-conversely, if it implies false, then the right alternative is selected.
-
-Tag trees as we have defined them greatly restrict the possible boolean formulas that can act
-as selectors and tags. Tags must only be a plain boolean variable and selectors can be either
-plain boolean variables or the negation of a boolean variable. If we relax these restrictions by
-allowing tags and selectors to be boolean formulas from a proper boolean algebra
-consisting of boolean literals, variables, negation, conjunction, and disjunction we achieve a
-more expressive form of tag tree that we call \emph{formula trees} \cite{walkingshaw2014projectional,walkingshaw2014variational}.
-For an example of formula
-trees in action, consider the operation $sel(C \wedge \neg A , A \wedge B \langle 1, 2 \rangle)$,
-which produces $2$ because of the implication: $C \wedge \neg A \Rightarrow \neg(A \wedge B)$.
-
-Replacing plain tags with formulas has several advantages. For example, we can simplify tag trees like
+Using boolean formulas as our dimensions provides several advantages. For example, we can simplify trees like
 $\tagtree{B}{1}{\tagtree{A}{1}{2}}$ to the more compact form $\tagtree{(B \vee A)}{1}{2}$. This is just
 one of a number of optimizations that are made possible by representing dimensions as formulas
 \cite{walkingshaw2014projectional,hubbard2016formula}. Formula choices are also more convenient
 for maintaining a variational context during execution of a program, a fact that will become
 more relevant when we present our work on variational imperative programming later in
-this work. Despite these advantages over plain tags, formulas incur some cost by introducing boolean
+this work. Despite these advantages, formulas incur some cost by introducing boolean
 satisfiability problems into many common operations, which is an NP-complete problem. However, thanks to improvements in the
 efficiency of modern SAT solvers, often the worst-case NP-complete performance of these satisfiability
 problems can be avoided.
-
-While formula trees allow for optimizations that eliminate redundancy found in tag trees,
-they still permit the construction of trees with redundant alternatives. If we wish to disallow such
-redundancy entirely we use our final choice data structure,
-\emph{formula maps} \cite{walkingshaw2014variational}.
-A formula map represents choices as a mapping from unique alternatives to formulas, eliminating the
-possibility for redundant alternatives. The tag tree $\tagtree{C}{\tagtree{A}{1}{2}}{\tagtree{B}{2}{3}}$
-corresponds to the formula map 
-$\{1 \Rightarrow A \wedge C, 2 \Rightarrow \neg A \vee B, 3 \Rightarrow \neg B \wedge \neg C\}$.
-We require all formula values in the formula map to be disjoint, with their disjoint union as the total
-configuration space for the boolean variables contained within it. % how to phrase this?
-
-Formula maps assure us that there is no redundancy, but at the significant cost of maintaining this
-invariant when formula maps are created or updated. This requires potentially even more interaction
-with satisfiability problems than formula trees. Often it is more advantageous to define a \emph{join}
-operation that eliminates redundancy in a formula tree and then to identify the parts of
-a variational program that are particularly sensitive to redundancy and insert calls to \emph{join}
-at these points.  
 
 \subsection{Properties of choices}
 
@@ -134,7 +131,7 @@ at these points.
 The choice calculus gives us several desirable properties for variational programs.
 The first is \emph{sharing}. A naive approach to executing a variational program is simply to
 configure the variational program in order to produce each variant and run them all sequentially.
-For a program with $n$ dimensions this results in $2^n$ variants that must be executed. Crucially,
+For a program with $n$ features this results in $2^n$ variants that must be executed. Crucially,
 the naive approach must recompute any common elements shared between variants. Embedding
 choices in our program, combined with a variability-aware model of execution allows us to exploit this
 inherent sharing by only computing shared components once, greatly improving the efficiency of
@@ -148,7 +145,7 @@ are correct we need a way to relate them back to the individual variants they re
 
 Given a function $f : T \rightarrow U$ and its variational counterpart $g : V \rightarrow W$, we say that
 the relationship between the two is correct if for some configuration $c$ the following equality holds:
-$conf\ c \circ g = f \circ conf\ c$ \cite{hubbard2016formula}. Put simply, configuring the result
+$\mathit{conf}\ c \circ g = f \circ \mathit{conf}\ c$ \cite{hubbard2016formula}. Put simply, configuring the result
 of passing a variational value to a variational function should be the same as pre-configuring the input
 and the function itself. This can be visualized as the following commuting diagram:
 
@@ -159,11 +156,11 @@ and the function itself. This can be visualized as the following commuting diagr
      V & W \\
      T & U \\};
   \path[-stealth]
-    (m-1-1) edge node [left] {$conf\ c$} (m-2-1)
+    (m-1-1) edge node [left] {$\mathit{conf}\ c$} (m-2-1)
             edge node [above] {$g$} (m-1-2)
     (m-2-1.east|-m-2-2) edge node [below] {$f$}
              (m-2-2)
-    (m-1-2) edge node [right] {$conf\ c$} (m-2-2)
+    (m-1-2) edge node [right] {$\mathit{conf}\ c$} (m-2-2)
             ;
 \end{tikzpicture}
 \end{center}
