@@ -1,0 +1,55 @@
+Paper Outline
+
+1. Introduction
+  A. What is variation? Why is it important?
+2. Background
+  A. Introduce choice calculus
+    1. Notation
+    2. Formula trees
+  B. Properties of the choice calculus
+    1. Soundness/correctness
+      a. commuting diagram
+    2. Sharing/efficiency
+  C. How the choice calculus interacts with pure, non-effectful code
+    1. Introduce algebraic properties (functor, applicative, monad)
+3. Motivation
+  A. How are variational effects different from normal effects?
+  B. Subsections:
+    1. Variational state
+    2. Variational throw
+    3. Variational catch
+    4. Illustrate how all variational effects interact
+4. Plain IMP with Effects
+  A. Big-step operational semantics
+  B. Give quick introduction to IMP
+  C. Brief explanation of how IMP works with effects
+5. Variational IMP with Effects
+  A. Big-step operational semantics
+  B. Subsections:
+    1. Variational state
+      a. Introduce notion of variational context
+      b. Variational map
+        1. insert operation
+        2. lookup operation
+    2. Variational errors
+      a. Introduce notion of mask and associated operations
+        1. Illustrate how mask helps prevent useless computation in
+           dead variants.
+      b. State operations should respect error conditions of variants
+        1. To preserve correctness, variants in error should never
+           update the state.
+    3. Variational errors with try/catch blocks
+      a. Mask must be a stack
+      b. Catch blocks need to be executed in the variational context of the
+         errors that were thrown in the try block
+6. The Resource DSL
+  A. Demonstrate real-world value of formalisms
+  B. Describe purpose of Resource DSL
+    1. Why is variation/sharing important to its utility?
+  C. Give a few examples of the types of problems the Resource DSL solves
+  D. Give a few snippets of Resource DSL programs that solve these problems
+7. Related Work
+  A. Varex, VarexJ, etc.
+  B. Variational type inference
+8. Conclusions/Future Work
+  A. More effects? IO?
