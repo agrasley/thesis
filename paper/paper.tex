@@ -125,6 +125,56 @@ satisfiability problems into many common operations, which is an NP-complete pro
 efficiency of modern SAT solvers, often the worst-case NP-complete performance of these satisfiability
 problems can be avoided.
 
+\subsection{Implementation of Formula Trees}
+
+When integrating formula trees into an existing non-variational language we can choose to
+either embed choices directly into the abstract syntax of the host language or utilize a type-generic
+implementation. In this work we employ both strategies, opting to embed choices directly when dealing
+with programs, while using the type-generic implementation for the values produced by those programs.
+Here we present the type-generic implementation, although the basic principles explored here apply
+equally to embedded representations.
+
+Generic formula trees can be represented by the following Haskell datatypes:
+
+\begin{program}
+type Var = String
+data Dim =
+    Lit Bool
+  | Ref Var
+  | Not Dim
+  | And Dim Dim
+  | Or Dim Dim
+
+data FTree a = One a | Chc Dim (FTree a) (FTree a) 
+\end{program}
+
+The datatype \prog{Dim} represents expressions in our boolean algebra, with variable names as strings.
+The constructor \prog{One} creates the leaves of a formula tree, while \prog{Chc} creates the nodes.
+
+This type-generic representation allows us to easily define some useful algebraic properties of
+formula trees via typeclasses. Specifically, formula trees readily support implementation of the
+Functor, Applicative, and Monad typeclasses:
+
+\begin{program}
+instance Functor FTree where
+  fmap f (One a) = One (f a)
+  fmap f (Chc d l r) = Chc d (fmap f l) (fmap f r)
+  
+instance Applicative FTree where
+  pure = One
+  (One f) <*> v = fmap f v
+  (Chc d l r) <*> v = Chc d (l <*> v) (r <*> v)
+  
+instance Monad FTree where
+  return = One
+  (One v) >>= f = f v
+  (Chc d l r) >>= f = Chc d (l >>= f) (r >>= f)
+\end{program}
+
+Astute readers will note that because formula trees are merely a special class of binary tree with
+labeled nodes they share identical instances. The usefulness of defining these instances will be made
+apparent further on in this work during the discussion of pure, side-effect free variational languages.
+
 \subsection{Properties of choices}
 
 % sharing is desirable. what is sharing?
@@ -175,12 +225,57 @@ difficult problem of variational execution with side effects.
 \subsection{Pure variational execution}
 
 If we do not have to worry about side effects in our language that we wish to introduce variation to
-our task is comparatively easy. We begin by considering a simple arithmetic expression language:
+our task is comparatively easy. We begin by considering a simple arithmetic expression language
+defined by the following Haskell datatype:
 
-$a ::= n\ |\ a + a\ |\ a * a$
+\begin{program}
+data Arith = N Int | Add Arith Arith | Mul Arith Arith
+\end{program}
 
-TODO: demonstrate how this works for pure expressions
+In the non-variational setting we can easily define an interpreter for this language which produces
+values of type \prog{Int}:
 
+\begin{program}
+eval :: Arith -> Int
+eval (N i) = i
+eval (Add l r) = eval l + eval r
+eval (Mul l r) = eval l * eval r
+\end{program}
+
+The process of ``variationalizing" this small example is quite straightforward. First, we add a
+constructor to support choices in our language:
+
+\begin{program}
+data Arith = N Int | Add Arith Arith | Mul Arith Arith | AChc Dim Arith Arith
+\end{program}
+
+Next we modify our interpreter. Instead of returning plain values of type \prog{Int},
+we now return \emph{variational} values of type \prog{FTree Int}. We then take the cases
+from the non-variational interpreter and make them variational by situating them within the
+applicative functor instance for \prog{FTree} we defined in Section 2. Finally, we add a case
+that handles our new \prog{AChc} constructor and we have completed the conversion of our
+interpreter:
+
+\begin{program}
+eval :: Arith -> FTree Int
+eval (N i) = pure i
+eval (Add l r) = (+) <$> eval l <*> eval r
+eval (Mul l r) = (*) <$> eval l <*> eval r
+eval (AChc d l r) = Chc d (eval l) (eval r)
+\end{program}
+
+This basic pattern of ``variationalizing" a language by re-situating the
+plain interpreter within the applicative functor for choices works well for any language that is pure
+and side-effect free. The only area of concern is associated with the use of data structures in the
+interpretation of the language, which often benefit from being replaced with custom variational data structures that
+provide greater sharing and efficiency. Recent work has explored the benefits of custom variational
+data structures for maps \cite{erictodo}, linked lists \cite{karltodo}, and stacks \cite{mengtodo}.
+As such, exercising proper care in the selection and integration of variational data structures
+into a variational interpreter resolves this issue.
+
+Nevertheless, even with the support of more efficient
+variational data structures, our basic pattern of converting a plain interpreter to a variational one
+encounters significant difficulties in the presence of a language with side effects.
 
 \subsection{Exceptions}
 
@@ -198,12 +293,12 @@ Consider the following program:
 In a non-variational context, the behavior of this program should be clear.
 If the variable $y$ evaluates to \textbf{true}, then an error is thrown with value
 $e$. At this point evaluation should stop, meaning that the variable $x$ is never
-assigned in the final statement, avoiding the costly computation of \texttt{expensiveFn}. This effect of halting execution and
+assigned in the final statement, avoiding the costly computation of \prog{expensiveFn}. This effect of halting execution and
 returning an error value is the essence of exceptions in non-variational settings.
 
 Now we consider the behavior of the same program in a variational context.
 Suppose that the variable $y$ evaluates to the variational value
-$A \langle \textbf{true}, \textbf{false} \rangle$. This means that in the left alternative of $A$ we
+$\tagtree{A}{true}{false}$. This means that in the left alternative of $A$ we
 would evaluate the body of the if statement, while ignoring it otherwise. Therefore,
 in the left alternative of $A$ we throw an exception, but otherwise we continue on to the
 final statement.
@@ -216,9 +311,9 @@ an exception should complete their execution uninhibited.
 
 We also can't simply continue evaluation
 in every variant regardless of whether or not we have encountered an error.
-Suppose that calling \texttt{expensiveFn} normally would evaluate to the variational value $A\langle 1, 2 \rangle$, but at considerable computational cost in both alternatives.
+Suppose that calling \texttt{expensiveFn} normally would evaluate to the variational value $\tagtree{A}{1}{2}$, but at considerable computational cost in both alternatives.
 Because we know that the left alternative of $A$ will ultimately evaluate to the thrown exception $e$, we would
-like to avoid the cost involved in computing the value 1 that we will just throw away later, mirroring how throwing an exception short-circuits evaluation in the
+like to avoid the cost involved in computing the value $1$ that we will just throw away later, mirroring how throwing an exception short-circuits evaluation in the
 non-variational setting. 
 
 Another problem concerns how to keep track of which variants are in error states and what
