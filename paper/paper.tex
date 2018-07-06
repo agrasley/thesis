@@ -68,24 +68,23 @@ choices, but for our purposes we utilize a data structure we refer
 to as a formula tree \cite{walkingshaw2014projectional,walkingshaw2014variational}.
 Formula trees represent the set of alternatives as a binary tree, with concrete
 values at the leaves of the tree. Each node of the tree is tagged with a formula from a boolean
-algebra consisting of boolean literals, variables, negation, conjunction, and disjunction. We call these
-tags the \emph{dimensions} of the choices. Notationally we represent these choice trees
-via angle brackets. For example, a choice in dimension $A$ (where $A$ is a boolean variable)
+algebra consisting of boolean literals, variables, negation, conjunction, and disjunction. We call individual
+boolean variables the \emph{dimensions} of the choices, while the expressions as a whole we call \emph{conditions}. Notationally we represent these choice trees
+via angle brackets. For example, a choice in dimension $A$
 between the values $1$ and $2$ is written $\tagtree{A}{1}{2}$.
 
-Each boolean variable in a dimension can be viewed as coding for the presence or absence of a
+Each dimension can be viewed as coding for the presence or absence of a
 particular feature that we wish to vary. To continue the above example, $\tagtree{A}{1}{2}$
-represents a variational value that is $1$ when feature $A$ is present and $2$ otherwise. Because
-dimensions can be any expression from a boolean algebra, we can combine them in a way
-analogous to conditional expressions. For example, the choice $\tagtree{(A \wedge \neg B)}{1}{2}$
+represents a variational value that is $1$ when feature $A$ is present and $2$ otherwise. Conditions
+are therefore analogous to conditional expressions built out of these features. For example, the choice $\tagtree{(A \wedge \neg B)}{1}{2}$
 is a value that represents $1$ when feature $A$ is present and $B$ is absent, and $2$ otherwise.
 
-The \emph{selection} operation on a choice can be used to eliminate dimensions. We define a function
-\emph{sel} that takes a \emph{selector} and a variational value and eliminates dimensions based off
+The \emph{selection} operation on a choice can be used to eliminate conditions. We define a function
+\emph{sel} that takes a \emph{selector} and a variational value and eliminates conditions based off
 of the selector. For formula trees selectors are also booleans formulas, and can be seen as specifying
-a condition that is assumed to hold true. Therefore, for a given dimension and
+a condition that is assumed to hold true. Therefore, for a given condition and
 selector, we eliminate the choice and replace it with the left branch if the selector logically implies
-the truth of the dimension. Similarly, if the selector logically implies the falsehood of the dimension, we eliminate the choice
+the truth of the condition. Similarly, if the selector logically implies the falsehood of the condition, we eliminate the choice
 and replace it with the right branch. If neither implication is valid, the choice remains untouched with
 both alternatives left intact.
 
@@ -97,26 +96,25 @@ value $\tagtree{A}{1}{2}$ because the selector $B$ does not logically imply eith
 of dimension $A$.
 
 Selection is \emph{synchronized} for a given
-dimension, meaning that two choices in the same value or expression that share a dimension must always
+condition, meaning that two choices in the same value or expression that share a condition must always
 select the same alternative. For example, in the expression $\tagtree{A}{1}{2}+\tagtree{A}{3}{4}$,
 the only possible selections are $1+3$ and $2+4$, while $1+4$ and $2+3$ can never occur due
 to synchronization.
 
-We say that a choice is $configured$ when all dimensions
+We say that a choice is $configured$ when all conditions
 have been eliminated, yielding a plain value without choices. We call these resulting plain values
 \emph{variants}. We define a function \emph{conf} which takes a
-\emph{configuration} and a variational value and produces a variant. Under the view of boolean
-variables in dimensions as representing distinct features, a configuration for a formula tree gives
-an assignment for each variable present in the dimensions of the variational value being configured.
+\emph{configuration} and a variational value and produces a variant. Under the view of dimensions as representing distinct features, a configuration for a formula tree gives
+an assignment for each dimension of the variational value being configured.
 A simple way to do this is to define a configuration as a list of the features that are present, with all
 other features assumed to be absent. In other words, configurations are a list of variables that should
-evaluate to true, will all other variables evaluating to false. Configuring a formula tree is then simply evaluating
-each dimension given the variable assignment. If the dimension evaluates to true, then the left variant
+evaluate to true, with all other variables evaluating to false. Configuring a formula tree is then simply evaluating
+each condition given the variable assignment. If the condition evaluates to true, then the left variant
 is chosen, otherwise the right variant is chosen.
 
-Using boolean formulas as our dimensions provides several advantages. For example, we can simplify trees like
+Using boolean formulas as our tags provides several advantages. For example, we can simplify trees like
 $\tagtree{B}{1}{\tagtree{A}{1}{2}}$ to the more compact form $\tagtree{(B \vee A)}{1}{2}$. This is just
-one of a number of optimizations that are made possible by representing dimensions as formulas
+one of a number of optimizations that are made possible by representing tags as boolean formulas
 \cite{walkingshaw2014projectional,hubbard2016formula}. Formula choices are also more convenient
 for maintaining a variational context during execution of a program, a fact that will become
 more relevant when we present our work on variational imperative programming later in
@@ -130,25 +128,25 @@ problems can be avoided.
 When integrating formula trees into an existing non-variational language we can choose to
 either embed choices directly into the abstract syntax of the host language or utilize a type-generic
 implementation. In this work we employ both strategies, opting to embed choices directly when dealing
-with programs, while using the type-generic implementation for the values produced by those programs.
+with programs, while using the type-generic implementation for the values produced by these programs.
 Here we present the type-generic implementation, although the basic principles explored here apply
 equally to embedded representations.
 
 Generic formula trees can be represented by the following Haskell datatypes:
 
 \begin{program}
-type Var = String
-data Dim =
+type Dim = String
+data Cond =
     Lit Bool
-  | Ref Var
-  | Not Dim
-  | And Dim Dim
-  | Or Dim Dim
+  | Ref Dim
+  | Not Cond
+  | And Cond Cond
+  | Or Cond Cond
 
-data FTree a = One a | Chc Dim (FTree a) (FTree a) 
+data V a = One a | Chc Cond (V a) (V a) 
 \end{program}
 
-The datatype \prog{Dim} represents expressions in our boolean algebra, with variable names as strings.
+The datatype \prog{Cond} represents expressions in our boolean algebra, with dimension names as strings.
 The constructor \prog{One} creates the leaves of a formula tree, while \prog{Chc} creates the nodes.
 
 This type-generic representation allows us to easily define some useful algebraic properties of
@@ -156,16 +154,16 @@ formula trees via typeclasses. Specifically, formula trees readily support imple
 Functor, Applicative, and Monad typeclasses:
 
 \begin{program}
-instance Functor FTree where
+instance Functor V where
   fmap f (One a) = One (f a)
   fmap f (Chc d l r) = Chc d (fmap f l) (fmap f r)
   
-instance Applicative FTree where
+instance Applicative V where
   pure = One
   (One f) <*> v = fmap f v
   (Chc d l r) <*> v = Chc d (l <*> v) (r <*> v)
   
-instance Monad FTree where
+instance Monad V where
   return = One
   (One v) >>= f = f v
   (Chc d l r) >>= f = Chc d (l >>= f) (r >>= f)
@@ -181,7 +179,7 @@ apparent further on in this work during the discussion of pure, side-effect free
 The choice calculus gives us several desirable properties for variational programs.
 The first is \emph{sharing}. A naive approach to executing a variational program is simply to
 configure the variational program in order to produce each variant and run them all sequentially.
-For a program with $n$ features this results in $2^n$ variants that must be executed. Crucially,
+For a program with $n$ dimensions this results in $2^n$ variants that must be executed. Crucially,
 the naive approach must recompute any common elements shared between variants. Embedding
 choices in our program, combined with a variability-aware model of execution allows us to exploit this
 inherent sharing by only computing shared components once, greatly improving the efficiency of
@@ -224,7 +222,7 @@ difficult problem of variational execution with side effects.
 
 \subsection{Pure variational execution}
 
-If we do not have to worry about side effects in our language that we wish to introduce variation to
+If we do not have to worry about side effects in our language that we wish to introduce variation to then
 our task is comparatively easy. We begin by considering a simple arithmetic expression language
 defined by the following Haskell datatype:
 
@@ -246,25 +244,25 @@ The process of ``variationalizing" this small example is quite straightforward. 
 constructor to support choices in our language:
 
 \begin{program}
-data Arith = N Int | Add Arith Arith | Mul Arith Arith | AChc Dim Arith Arith
+data Arith = N Int | Add Arith Arith | Mul Arith Arith | AChc Cond Arith Arith
 \end{program}
 
 Next we modify our interpreter. Instead of returning plain values of type \prog{Int},
-we now return \emph{variational} values of type \prog{FTree Int}. We then take the cases
+we now return \emph{variational} values of type \prog{V Int}. We then take the cases
 from the non-variational interpreter and make them variational by situating them within the
-applicative functor instance for \prog{FTree} we defined in Section 2. Finally, we add a case
+applicative functor instance for \prog{V} we defined in Section 2. Finally, we add a case
 that handles our new \prog{AChc} constructor and we have completed the conversion of our
 interpreter:
 
 \begin{program}
-eval :: Arith -> FTree Int
+eval :: Arith -> V Int
 eval (N i) = pure i
 eval (Add l r) = (+) <$> eval l <*> eval r
 eval (Mul l r) = (*) <$> eval l <*> eval r
 eval (AChc d l r) = Chc d (eval l) (eval r)
 \end{program}
 
-This basic pattern of ``variationalizing" a language by re-situating the
+This basic pattern of variationalizing a language by re-situating the
 plain interpreter within the applicative functor for choices works well for any language that is pure
 and side-effect free. The only area of concern is associated with the use of data structures in the
 interpretation of the language, which often benefit from being replaced with custom variational data structures that
@@ -275,11 +273,43 @@ into a variational interpreter resolves this issue.
 
 Nevertheless, even with the support of more efficient
 variational data structures, our basic pattern of converting a plain interpreter to a variational one
-encounters significant difficulties in the presence of a language with side effects.
+encounters significant difficulties in the presence of a language with side effects. Specifically, we
+demonstrate that the presence of side-effectful statements, control flow structures, mutable state, and exceptions
+commonly encountered in imperative programming languages requires more than the approach based
+on applicative functors as we have outlined here.
+
+\subsection{Mutable State}
+
+To demonstrate why imperative programming with side effects requires us to rethink how we
+variationalize a language and its execution, we turn to a small example in a simple imperative
+language that supports basic control structures and variables with mutable state:
+
+\begin{algorithmic}
+\STATE $x \coloneqq 0$
+\STATE $y \coloneqq$ getSecret()
+\IF{$y$ is true}
+\STATE{$x \coloneqq 1$}
+\ENDIF
+\end{algorithmic}
+
+In a non-variational setting, we can reasonably expect the final state of the variables in this example
+to be either $\{x \Rightarrow 0,\ y \Rightarrow \text{false}\}$ or
+$\{x \Rightarrow 1,\ y \Rightarrow \text{true}\}$ depending on the value that
+\prog{getSecret()} evaluates to. Now we consider the execution of the above example in a variational
+setting. Suppose that the call to \prog{getSecret}
+produces the variational value $\tagtree{A}{\text{true}}{\text{false}}$. We can view this as simply
+combining the two possible non-variational execution paths described above into a
+single execution varying in dimension $A$. As such, we would expect the final variable state
+in this example to be  $\{x \Rightarrow \tagtree{A}{1}{0},\ y \Rightarrow \tagtree{A}{\text{true}}{\text{false}}\}$ by combining the final states above into choices over dimension $A$. We can verify this to be the proper variational result using the correctness relationship
+specified in Section 2.
+
+Of course, to arrive at the above result, we simply worked backwards from the non-variational
+results. In order to take advantage of the benefits provided by sharing, we must instead develop a model
+of variational execution that supports mutable state. We assume 
 
 \subsection{Exceptions}
 
-Exceptions are a common type of effect that proves challenging in a variational setting.
+Exceptions are another common type of effect that proves challenging in a variational setting.
 Consider the following program:
 
 \begin{algorithmic}
@@ -322,6 +352,137 @@ state, we must have some efficient way of determining when evaluation is about t
 In the non-variational context we have no need to store and remember error values during evaluation
 because we simply return the error value immediately when it is thrown. In the variational context, we
 must now store these values while we continue to evaluate variants that are not in an error state.
+
+\section{The Resource DSL}
+
+The work on variational imperative programming we have described up to this point was motivated
+by our experience developing the Resource DSL. The Resource DSL is designed with the intent of
+allowing easy specification of resource requirements in highly configurable systems. Modern software
+systems often have complex interactions in terms of resource requirements between different subsystems,
+and managing these interactions and determining configurations that fulfill a certain set of requirements
+is often a nontrivial task. The Resource DSL makes the specification and management
+of these interactions much more feasible and maintainable. Because of the highly configurable and constantly evolving
+nature of modern software systems the Resource DSL utilizes the principles of variational programming
+discussed above in order to support the simultaneous verification of resource requirements for
+systems with large feature sets. In this section we describe the design and implementation of the
+Resource DSL including several case studies of its use. In particular we pay special attention to the
+practical concerns brought on by integrating choices into an imperative language.
+
+\subsection{Resources}
+
+In our language a resource is represented by a distinct primitive value. These primitive values
+can be either booleans, integers, floating point numbers, strings, or the unit value, as defined
+by the following Haskell datatype:
+
+\begin{program}
+data PVal
+     = Unit
+     | B Bool
+     | I Int
+     | F Double
+     | S Symbol
+\end{program}
+
+All resources are maintained in a global resource environment during execution of a program
+in the Resource DSL. This environment is a mapping from paths to resource values. Paths are
+analogous to Unix filesystem paths that most programmers are already familiar with, allowing for
+simple organization of resources in treelike structures. For example, a system may place its server
+bandwidth resource at \prog{/Server/Bandwidth}, similarly placing its client bandwidth at \prog{/Client/Bandwitdth}.
+
+In a non-variational setting, resource environments can very easily be represented by a map data structure,
+with paths as the keys and primitive values as the values. All interaction with the resource environment can then
+simply be performed via the standard map operations for lookup and update. However, because our resource environment
+is variational we must take greater care in its implementation. Resources can have different value in different
+variants, so we exchange values of type \prog{PVal} for \prog{V (Maybe PVal)}. \prog{Maybe} is necessary in order to
+account for cases where a resource is created or destroyed in only certain variants, where \prog{Nothing} in a particular variant
+is equivalent to the absence of the key in the plain map.
+
+Additionally, as explained in our discussion of the semantics of VIMP, all operations on our variational map must be variationally aware,
+taking as an additional argument the current variational context of the execution. The Resource DSL supports variationally aware lookup,
+creation, deletion, and modification operations on variational maps. We provide a sample implementation of variational lookup, omitting
+the other operations for brevity:
+
+\begin{program}
+vlookup :: (Ord k) => Cond -> k -> Map k (V (Maybe v)) -> V (Maybe v)
+vlookup vctx k env = case (lookup k env) of
+    Nothing -> One Nothing
+    Just v -> sel vctx v  -- sel is the standard selection operation for formula trees
+\end{program}
+
+\subsection{Expressions}
+
+Of course, primitive resource values are of little use without ways of manipulating them. To this end the Resource DSL supports
+a number of common operations over primitive values in the form of a simple expression language. Expressions are formed by
+immutable variable references, references to resources by their specific path, literal primitive values, and common unary, binary, and ternary
+operations, such as addition, negation, equality, ternary conditions, etc. Where appropriate, expressions utilize choices in order to support
+variational execution.
+
+\begin{program}
+data Expr
+     = Ref Var                             -- ^ variable reference
+     | Res Path                            -- ^ resource reference
+     | Lit (V PVal)                        -- ^ primitive literal
+     | P1  Op1 (V Expr)                    -- ^ primitive unary function
+     | P2  Op2 (V Expr) (V Expr)           -- ^ primitive binary function
+     | P3 Op3 (V Expr) (V Expr) (V Expr) -- ^ conditional expression
+\end{program}
+
+The Resource DSL also supports unary functions over primitive values. The body of the function is simply a choice of expressions as defined above.
+The function takes a single parameter, which is a combination of the name and type of the expected argument to the function. Because the
+type of the parameter may depend on the variant it is located in, we define types to be a choice of primitive types.
+
+\begin{program}
+data PType = TUnit | TBool | TInt | TFloat | TSymbol
+
+data Param = Param Var (V PType)
+
+data Fun = Fun Param (V Expr)
+\end{program}
+
+\subsection{Effects on Resources}
+
+Having established the representation of resources in our DSL as well as their manipulation via expressions and unary functions,
+we now turn to defining effects on the global resource environment.
+The Resource DSL supports four basic effects for resources: creation, deletion, modification, and checking/verification. All effects are performed
+within the current variational context of the execution. Deletion is the
+simplest, removing the resource at a particular path. Creation takes a path and an expression that produces a variational primitive value
+and inserts that value into the resource environment. Modification takes a unary function over the value of the resource and replaces it
+with the result of the function. Checks take a unary function over the value of the resource that returns a boolean, with \prog{True} indicating
+success and \prog{False} indicating failure. When a check fails, an error is thrown, with an error message indicating what check failed.
+In this way, checks allow for a user to specify conditions or requirements that must hold for a particular resource.
+
+\begin{program}
+data Effect
+     = Create (V Expr)
+     | Check  Fun
+     | Modify Fun
+     | Delete
+\end{program}
+
+\subsection{Statements}
+
+Statements are used in order to sequence and combine the above effects into programs in the Resource DSL.
+One particular difficulty arises in determining how to represent a variational block of statements. Typically we
+would use a simple list of statements, but in the variational setting we must ask what kind of variational list
+we should use. Fortunately, recent work \cite{karltodo} has determined \emph{segment lists} to be a particularly
+efficient implementation of variational linked lists. A segment list is a list of segments, where segments are either
+plain lists or a choice between segment lists. Therefore, we define our blocks to be segment lists of
+statements.
+
+\begin{program}
+data Segment a = Elems [a] | Split BExpr (SegList a) (SegList a)
+type SegList a = [Segment a]
+type Block = SegList Stmt
+
+data Stmt
+     = Do Path Effect       -- ^ apply an effect
+     | If (V Expr) Block Block  -- ^ conditional statement
+     | In Path Block        -- ^ do work in a sub-environment
+     | For Var (V Expr) Block   -- ^ loop over indexed sub-environments
+     | Let Var (V Expr) Block   -- ^ extend the variable environment
+     | Load (V Expr) [V Expr] -- ^ load a sub-model or profile
+\end{program}
+
 
 \bibliographystyle{plain}
 \bibliography{paper}
