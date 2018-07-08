@@ -17,6 +17,7 @@
 \usepackage{fullpage}
 \usepackage{enumerate}
 \usepackage{fancyvrb}
+\usepackage{mathpartir}
                              
 
 %%%
@@ -353,6 +354,45 @@ In the non-variational context we have no need to store and remember error value
 because we simply return the error value immediately when it is thrown. In the variational context, we
 must now store these values while we continue to evaluate variants that are not in an error state.
 
+\section{IMP with Effects}
+
+%\def \one {\inferrule
+%  {one \\ two \\ three \\ or \\ more \\ premises}
+%  {and \\ any \\ number \\ of \\ conclusions \\ as \\ well}
+%}
+%$$
+%\fbox {\vbox {\advance \hsize by -2\fboxsep \advance \hsize by -2\fboxrule
+%       \linewidth\hsize
+%        $$\one $$}}
+%$$
+
+\def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
+
+\def \BigVar {\infer [A-Ref] { } {(S,x) \Downarrow_A S(x)}}
+
+\def \BigAdd {\infer [A-Add] {(S,e) \Downarrow_A n \\ (S,e') \Downarrow_A n' } {(S,e+e') \Downarrow_A n+n'}}
+
+\def \BigB {\infer [B-Bool] { } {(S,b) \Downarrow_B b}}
+
+\def \BigNot {\infer [B-Not] {(S,e) \Downarrow_B b} {(S,\text{not}\ e) \Downarrow_B \neg b}}
+
+\def \BigAnd {\infer [B-And] {(S,e) \Downarrow_B b \\ (S,e') \Downarrow_B b'} {(S,e\ \text{and}\ e') \Downarrow_B b \wedge b'}}
+
+\def \BigLess {\infer [B-Less] {(S,e) \Downarrow_A n \\ (S,e') \Downarrow_A n'} {(S,e<e') \Downarrow_B n<n'}}
+
+\begin{mathpar}
+\BigN \and
+\BigVar \and
+\BigAdd \and
+\BigB \and
+\BigNot \and
+\BigAnd \and
+\BigLess
+\end{mathpar}
+
+
+\section{Variational IMP with Effects}
+
 \section{The Resource DSL}
 
 The work on variational imperative programming we have described up to this point was motivated
@@ -385,20 +425,21 @@ data PVal
 
 All resources are maintained in a global resource environment during execution of a program
 in the Resource DSL. This environment is a mapping from paths to resource values. Paths are
-analogous to Unix filesystem paths that most programmers are already familiar with, allowing for
+analogous to the Unix filesystem paths that most programmers are already familiar with, allowing for
 simple organization of resources in treelike structures. For example, a system may place its server
-bandwidth resource at \prog{/Server/Bandwidth}, similarly placing its client bandwidth at \prog{/Client/Bandwitdth}.
+bandwidth resource at \prog{/Server/Bandwidth}, while placing its client bandwidth at \prog{/Client/Bandwitdth}.
 
-In a non-variational setting, resource environments can very easily be represented by a map data structure,
+In a non-variational setting, resource environments could very easily be represented by a map data structure,
 with paths as the keys and primitive values as the values. All interaction with the resource environment can then
-simply be performed via the standard map operations for lookup and update. However, because our resource environment
-is variational we must take greater care in its implementation. Resources can have different value in different
-variants, so we exchange values of type \prog{PVal} for \prog{V (Maybe PVal)}. \prog{Maybe} is necessary in order to
-account for cases where a resource is created or destroyed in only certain variants, where \prog{Nothing} in a particular variant
-is equivalent to the absence of the key in the plain map.
+simply be performed via the standard map operations (\emph{e.g.}, lookup, update, etc.). However, because our resource environment
+is variational we must slightly tweak this implementation. Resources can have different values in different
+variants, so we exchange values of type \prog{PVal} for \prog{V PVal}. But we soon note that simply exchanging primitive values
+for choices of primitive values is insufficient, as we are unable to
+account for cases where a resource is created or destroyed in only certain variants. We use \prog{Maybe} to represent this possibility
+that a resource may only exist in certain variants, leaving us with \prog{V (Maybe PVal)} for the type of resources in the global environment.
 
 Additionally, as explained in our discussion of the semantics of VIMP, all operations on our variational map must be variationally aware,
-taking as an additional argument the current variational context of the execution. The Resource DSL supports variationally aware lookup,
+taking as an additional argument the current execution's variational context. The Resource DSL supports variationally aware lookup,
 creation, deletion, and modification operations on variational maps. We provide a sample implementation of variational lookup, omitting
 the other operations for brevity:
 
@@ -413,7 +454,7 @@ vlookup vctx k env = case (lookup k env) of
 
 Of course, primitive resource values are of little use without ways of manipulating them. To this end the Resource DSL supports
 a number of common operations over primitive values in the form of a simple expression language. Expressions are formed by
-immutable variable references, references to resources by their specific path, literal primitive values, and common unary, binary, and ternary
+immutable variable references, references to resources by their specific path, literal primitive values, and a number of common unary, binary, and ternary
 operations, such as addition, negation, equality, ternary conditions, etc. Where appropriate, expressions utilize choices in order to support
 variational execution.
 
@@ -428,7 +469,7 @@ data Expr
 \end{program}
 
 The Resource DSL also supports unary functions over primitive values. The body of the function is simply a choice of expressions as defined above.
-The function takes a single parameter, which is a combination of the name and type of the expected argument to the function. Because the
+The function takes a single parameter, which is a combination of the name the parameter will be bound to in the body of the function and type of the parameter. Because the
 type of the parameter may depend on the variant it is located in, we define types to be a choice of primitive types.
 
 \begin{program}
