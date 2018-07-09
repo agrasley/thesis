@@ -390,6 +390,31 @@ must now store these values while we continue to evaluate variants that are not 
 \BigLess
 \end{mathpar}
 
+\def \nothing {\bullet}
+\def \BigErr {\infer [S-Err] { } {(\mathit{err}\ n,S,s) \Downarrow_S (\mathit{err}\ n,S)}}
+\def \BigSkip {\infer [S-Skip] { } {(E,S,\text{skip}) \Downarrow_S (E,S)}}
+\def \BigAssn {\infer [S-Assn] {(S,e) \Downarrow_A n} {(\nothing,S,x \coloneqq e) \Downarrow_S (\nothing,S[x \rightarrow n])}}
+\def \BigSeq {\infer [S-Seq] {(E,S,s) \Downarrow_S (E',S') \\ (E',S',s') \Downarrow_S (E'',S'')} {(E,S,s\ \text{seq}\ s') \Downarrow_S (E'',S'')}}
+\def \BigIfT {\infer [S-IfT] {(S,e) \Downarrow_B \mathit{true} \\ (\nothing,S,s) \Downarrow_S (E,S')} {(\nothing,S,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_S (E,S')}}
+\def \BigIfF {\infer [S-IfF] {(S,e) \Downarrow_B \mathit{false} \\ (\nothing,S,s') \Downarrow_S (E,S')} {(\nothing,S,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_S (E,S')}}
+\def \BigWhileT {\infer [S-WhileT] {(S,e) \Downarrow_B \mathit{true} \\ (\nothing,S,s) \Downarrow_S (E,S') \\ (E,S',\text{while}\ e\ \text{do}\ s) \Downarrow_S (E',S'')} {(\nothing,S,\text{while}\ e\ \text{do}\ s) \Downarrow_S (E',S'')}}
+\def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \mathit{false}} {(E,S,\text{while}\ e\ \text{do}\ s) \Downarrow_S (E,S)}}
+\def \BigThrow {\infer [S-Throw] {(S,e) \Downarrow_A n} {(\nothing,S,\text{throw}\ e) \Downarrow_S (\mathit{err}\ n,S)}}
+\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_S (\nothing,S')}}
+
+\begin{mathpar}
+\BigErr \and
+\BigSkip \and
+\BigAssn \and
+\BigSeq \and
+\BigIfT \and
+\BigIfF \and
+\BigWhileT \and
+\BigWhileF \and
+\BigThrow \and
+\BigTry
+\end{mathpar}
+
 
 \section{Variational IMP with Effects}
 
