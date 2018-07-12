@@ -401,6 +401,7 @@ must now store these values while we continue to evaluate variants that are not 
 \def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \mathit{false}} {(E,S,\text{while}\ e\ \text{do}\ s) \Downarrow_S (E,S)}}
 \def \BigThrow {\infer [S-Throw] {(S,e) \Downarrow_A n} {(\nothing,S,\text{throw}\ e) \Downarrow_S (\mathit{err}\ n,S)}}
 \def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_S (\nothing,S')}}
+\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (\mathit{err}\ n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_S (E,S''[x \rightarrow S'(x)])}}
 
 \begin{mathpar}
 \BigErr \and
@@ -412,11 +413,47 @@ must now store these values while we continue to evaluate variants that are not 
 \BigWhileT \and
 \BigWhileF \and
 \BigThrow \and
-\BigTry
+\BigTry \and
+\BigCatch
 \end{mathpar}
 
 
 \section{Variational IMP with Effects}
+
+\def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
+\def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
+\def \BigVAdd {\infer [VA-Add] {(C,S,e) \Downarrow_{VA} v \\ (C,S,e') \Downarrow_{VA} v'} {(C,S,e+e') \Downarrow_{VA} \mathit{liftV2}(+,v,v')}}
+\def \BigVAChcOne {\infer [VA-Chc1] {\mathit{sat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VA} v \\ (C \wedge \neg A,S,e') \Downarrow_{VA} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \tagtree{A}{v}{v'}}}
+\def \BigVAChcTwo {\infer [VA-Chc2] {\mathit{unsat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge \neg A,S,e') \Downarrow_{VA} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \tagtree{A}{\nothing}{v'}}}
+\def \BigVAChcThree {\infer [VA-Chc3] {\mathit{sat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VA} v} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \tagtree{A}{v}{\nothing}}}
+\def \BigVAChcFour {\infer [VA-Chc4] {\mathit{unsat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A)} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \nothing}}
+
+\def \BigVB {\infer [VB-Bool] { } {(C,S,b) \Downarrow_{VB} b}}
+\def \BigVNot {\infer [VB-Not] {(C,S,e) \Downarrow_{VB} v} {(C,S,\text{not}\ e) \Downarrow_{VB} \mathit{liftV}(\neg,v)}}
+\def \BigVAnd {\infer [VB-And] {(C,S,e) \Downarrow_{VB} v \\ (C,S,e') \Downarrow_{VB} v'} {(C,S,e\ \text{and}\ e') \Downarrow_{VB} \mathit{liftV2}(\wedge,v,v')}}
+\def \BigVLess {\infer [VB-Less] {(C,S,e) \Downarrow_{VA} v \\ (C,S,e') \Downarrow_{VA} v'} {(C,S,e<e') \Downarrow_{VB} \mathit{liftV2}(<,v,v')}}
+\def \BigVBChcOne {\infer [VB-Chc1] {\mathit{sat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VB} v \\ (C \wedge \neg A,S,e') \Downarrow_{VB} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \tagtree{A}{v}{v'}}}
+\def \BigVBChcTwo {\infer [VB-Chc2] {\mathit{unsat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge \neg A,S,e') \Downarrow_{VB} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \tagtree{A}{\nothing}{v'}}}
+\def \BigVBChcThree {\infer [VB-Chc3] {\mathit{sat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VB} v} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \tagtree{A}{v}{\nothing}}}
+\def \BigVBChcFour {\infer [VB-Chc4] {\mathit{unsat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A)} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \nothing}}
+
+\begin{mathpar}
+\BigVNum \and
+\BigVRef \and
+\BigVAdd \and
+\BigVAChcOne \and
+\BigVAChcTwo \and
+\BigVAChcThree \and
+\BigVAChcFour \and
+\BigVB \and
+\BigVNot \and
+\BigVAnd \and
+\BigVLess \and
+\BigVBChcOne \and
+\BigVBChcTwo \and
+\BigVBChcThree \and
+\BigVBChcFour
+\end{mathpar}
 
 \section{The Resource DSL}
 
