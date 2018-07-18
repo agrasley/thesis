@@ -306,7 +306,52 @@ specified in Section 2.
 
 Of course, to arrive at the above result, we simply worked backwards from the non-variational
 results. In order to take advantage of the benefits provided by sharing, we must instead develop a model
-of variational execution that supports mutable state. We assume 
+of variational execution that supports mutable state.  As we will see, the applicative functor instance for
+\prog{V} is no longer sufficient by itself, necessitating a different approach to how we variationalize programs
+that use mutable state.
+
+The central problem becomes obvious when we compare the required semantic domains for evaluating statements
+in the plain and variational versions of the example. The semantic domain of plain statements is a function from state to
+state, where state is a mapping from variable names to values. As such, we might then assume that the corresponding
+semantic domain for variational statements is also from state to state, only in this case we use a variational map. But when
+we attempt to evaluate our example under this semantic domain we soon reach an issue that causes us to rethink our definition.
+
+The problem comes in line 4, where we assign the variable $x$ in a conditional block. In the previous line, we check if the value of
+$y$ is true. When $y$ is a variational value, allowing it to be both true or false in different variants, we only assign $x$ in those variants
+in which $y$ is true. But if the state in our semantic domain is only a map, we have no way of passing the necessary information to the
+assignment that it must only occur in particular variants and not in others. Our only choice is to assign the value of $x$ for all variants,
+which would clearly be incorrect, as the assignment should only be carried out in the variant where $y$ is true. We must therefore
+conclude that we need to carry this variational context information around in our state during execution in order to handle cases where
+assignment occurs in a branch that is conditionally executed. Similar logic can be used to see that this context is also necessary to handle
+variational lookup of variable values.
+
+It is now clear why our previous approach of relying solely on the applicative functor instance for choices is inadequate. The method provides
+no way of maintaining and manipulating variational context during execution. This nicely demonstrates the problems we encounter when
+trying to introduce choices to languages with side effects.
+
+%\begin{program}
+%type Var = String
+%data AExpr = N Int | Ref Var | GetSecret
+%data BExpr = Equ AExpr AExpr
+%data Stmt = Assn Var AExpr | If BExpr Block
+%type Block = [Stmt]
+%
+%evalAExpr :: AExpr -> State -> Int
+%evalAExpr (N i) _ = i
+%evalAExpr (Ref x) s = lookup x s
+%evalAExpr GetSecret = undefined
+%
+%evalBExpr :: BExpr -> State -> Bool
+%evalBExpr (Equ l r) s = evalAExpr l s == evalAExpr r s
+%
+%evalStmt :: Stmt -> State -> State
+%evalStmt (Assn x e) s = update x (evalAExpr e) s
+%evalStmt (If e ss) s | evalBExpr e s = evalBlock ss s
+%                     | otherwise     = s
+% 
+%evalBlock :: Block -> State -> State
+%evalBlock b s = foldl (flip evalStmt) s b
+%\end{program}
 
 \subsection{Exceptions}
 
@@ -453,6 +498,24 @@ must now store these values while we continue to evaluate variants that are not 
 \BigVBChcTwo \and
 \BigVBChcThree \and
 \BigVBChcFour
+\end{mathpar}
+
+\newcommand{\GetCtx}[2]{\mathit{ctx}(#1,#2)}
+\def \T {\mathit{true}}
+\def \F {\mathit{false}}
+\def \BigVErr {\infer [VS-Err] { } {(C,S,E,\T,s) \Downarrow_{VS} (S,E,\T)}}
+\def \BigVSkip {\infer [VS-Skip] { } {(C,S,E,F,\text{skip}) \Downarrow_{VS} (S,E,F)}}
+\def \BigVAssn {\infer [VS-Assn] {(\GetCtx{C}{E},S,e) \Downarrow_{VA} v} {(C,S,E,\F,x \coloneqq e) \Downarrow_{VS} (S[(\GetCtx{C}{E},x) \rightarrow v],E,\F)}}
+\def \BigVSeq {\infer [VS-Seq] {(C,S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C,S',E',F,s') \Downarrow_{VS} (S'',E'',F')} {(C,S,E,s\ \text{seq}\ s') \Downarrow_{VS} (S'',E'',F')}}
+\def \BigVIfOne {\infer [VS-If1] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(C \wedge \mathit{whenTrue}(v)) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ \mathit{sat}(C \wedge \mathit{whenFalse}(v)) \\ (C \wedge \mathit{whenFalse}(v),S',E',\F) \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S'',E'',F \wedge F')}}
+
+
+\begin{mathpar}
+\BigVErr \and
+\BigVSkip \and
+\BigVAssn \and
+\BigVSeq \and
+\BigVIfOne
 \end{mathpar}
 
 \section{The Resource DSL}
