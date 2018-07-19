@@ -507,7 +507,13 @@ must now store these values while we continue to evaluate variants that are not 
 \def \BigVSkip {\infer [VS-Skip] { } {(C,S,E,F,\text{skip}) \Downarrow_{VS} (S,E,F)}}
 \def \BigVAssn {\infer [VS-Assn] {(\GetCtx{C}{E},S,e) \Downarrow_{VA} v} {(C,S,E,\F,x \coloneqq e) \Downarrow_{VS} (S[(\GetCtx{C}{E},x) \rightarrow v],E,\F)}}
 \def \BigVSeq {\infer [VS-Seq] {(C,S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C,S',E',F,s') \Downarrow_{VS} (S'',E'',F')} {(C,S,E,s\ \text{seq}\ s') \Downarrow_{VS} (S'',E'',F')}}
-\def \BigVIfOne {\infer [VS-If1] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(C \wedge \mathit{whenTrue}(v)) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ \mathit{sat}(C \wedge \mathit{whenFalse}(v)) \\ (C \wedge \mathit{whenFalse}(v),S',E',\F) \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S'',E'',F \wedge F')}}
+\def \BigVIfOne {\infer [VS-If1] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E'}) \\ (C \wedge \mathit{whenFalse}(v),S',E',\F) \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S'',E'',F \wedge F')}}
+\def \BigVIfTwo {\infer [VS-If2] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E}) \\ (C \wedge \mathit{whenFalse}(v),S,E,\F) \Downarrow_{VS} (S',E',F)} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S',E',F)}}
+\def \BigVIfThree {\infer [VS-If3] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E'})} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S',E',F)}}
+\def \BigVIfFour {\infer [VS-If4] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E'})} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S,E,\F)}}
+\def \BigVWhileT {\infer [VS-WhileT] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C \wedge \mathit{whenTrue}(v),S',E',F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S'',E'',F')}}
+\def \BigVWhileF {\infer [VS-WhileF] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E})} {(C,S,E,\F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S,E,\F)}}
+\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{E},S,e) \Downarrow_{VA} v} {(C,S,E,\F,\text{throw}\ e) \Downarrow_{VS} (S,\mathit{combine}((C,v),E),\T)}}
 
 
 \begin{mathpar}
@@ -515,7 +521,13 @@ must now store these values while we continue to evaluate variants that are not 
 \BigVSkip \and
 \BigVAssn \and
 \BigVSeq \and
-\BigVIfOne
+\BigVIfOne \and
+\BigVIfTwo \and
+\BigVIfThree \and
+\BigVIfFour \and
+\BigVWhileT \and
+\BigVWhileF \and
+\BigVThrow
 \end{mathpar}
 
 \section{The Resource DSL}
