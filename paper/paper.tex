@@ -18,6 +18,7 @@
 \usepackage{enumerate}
 \usepackage{fancyvrb}
 \usepackage{mathpartir}
+\usepackage{syntax}
                              
 
 %%%
@@ -401,16 +402,6 @@ must now store these values while we continue to evaluate variants that are not 
 
 \section{IMP with Effects}
 
-%\def \one {\inferrule
-%  {one \\ two \\ three \\ or \\ more \\ premises}
-%  {and \\ any \\ number \\ of \\ conclusions \\ as \\ well}
-%}
-%$$
-%\fbox {\vbox {\advance \hsize by -2\fboxsep \advance \hsize by -2\fboxrule
-%       \linewidth\hsize
-%        $$\one $$}}
-%$$
-
 \def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
 
 \def \BigVar {\infer [A-Ref] { } {(S,x) \Downarrow_A S(x)}}
@@ -513,8 +504,13 @@ must now store these values while we continue to evaluate variants that are not 
 \def \BigVIfFour {\infer [VS-If4] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E'})} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S,E,\F)}}
 \def \BigVWhileT {\infer [VS-WhileT] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C \wedge \mathit{whenTrue}(v),S',E',F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S'',E'',F')}}
 \def \BigVWhileF {\infer [VS-WhileF] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E})} {(C,S,E,\F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S,E,\F)}}
-\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{E},S,e) \Downarrow_{VA} v} {(C,S,E,\F,\text{throw}\ e) \Downarrow_{VS} (S,\mathit{combine}((C,v),E),\T)}}
-
+\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{h:t},S,e) \Downarrow_{VA} v} {(C,S,h:t,\F,\text{throw}\ e) \Downarrow_{VS} (S,((C,v):h):t,\T)}}
+\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,\F,s) \Downarrow_{VS} (S',[]:E,\F)} {(C,S,E,\F,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_{VS} (S',E,\F)}}
+\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,\F,s) \Downarrow_{VS} (S',(h:t):E,F) \\ (C \wedge \mathit{catchCtx}(h:t),S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(h:t)],E,\F,s']) \Downarrow_{VS} (S'',E',F')} {(C,S,E,\F,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_{VS} (S''[(\T,x) \rightarrow S'(\T,x)],E',F')}}
+\def \BigVChcOne {\infer [VS-Chc1] {\mathit{sat}(\GetCtx{C}{E} \wedge A) \\ \mathit{sat}(\GetCtx{C}{E} \wedge \neg A) \\ (C \wedge A,S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C \wedge \neg A,S',E',\F,s') \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S'',E'',F \wedge F')}}
+\def \BigVChcTwo {\infer [VS-Chc2] {\mathit{unsat}(\GetCtx{C}{E} \wedge A) \\ \mathit{sat}(\GetCtx{C}{E} \wedge \neg A) \\ (C \wedge \neg A,S,E,\F,s') \Downarrow_{VS} (S',E',F)} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S',E',F)}}
+\def \BigVChcThree {\infer [VS-Chc3] {\mathit{sat}(\GetCtx{C}{E} \wedge A) \\ \mathit{unsat}(\GetCtx{C}{E} \wedge \neg A) \\ (C \wedge A,S,E,\F,s) \Downarrow_{VS} (S',E',F)} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S',E',F)}}
+\def \BigVChcFour {\infer [VS-Chc4] {\mathit{unsat}(\GetCtx{C}{E} \wedge A) \\ \mathit{unsat}(\GetCtx{C}{E} \wedge \neg A)} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S,E,\T)}}
 
 \begin{mathpar}
 \BigVErr \and
@@ -527,7 +523,15 @@ must now store these values while we continue to evaluate variants that are not 
 \BigVIfFour \and
 \BigVWhileT \and
 \BigVWhileF \and
-\BigVThrow
+\BigVThrow \and
+\BigVTry \and
+\BigVCatch
+\end{mathpar}
+\begin{mathpar}
+\BigVChcOne \and
+\BigVChcTwo \and
+\BigVChcThree \and
+\BigVChcFour
 \end{mathpar}
 
 \section{The Resource DSL}
@@ -564,7 +568,11 @@ All resources are maintained in a global resource environment during execution o
 in the Resource DSL. This environment is a mapping from paths to resource values. Paths are
 analogous to the Unix filesystem paths that most programmers are already familiar with, allowing for
 simple organization of resources in treelike structures. For example, a system may place its server
-bandwidth resource at \prog{/Server/Bandwidth}, while placing its client bandwidth at \prog{/Client/Bandwitdth}.
+bandwidth resource at \prog{/Server/Bandwidth}, while placing its client bandwidth at \prog{/Client/Bandwidth}.
+Again, by analogy to filesystem paths, resource paths can be either absolute or relative. Relative paths are
+evaluated with respect to the execution environment's current path. For example, a reference to the resource
+at the relative path \prog{../GPU/Speed} would evaluate to \prog{/Servers/Hardware/GPU/Speed}
+given an execution environment with \prog{/Servers/Hardware/CPU} as its current path.
 
 In a non-variational setting, resource environments could very easily be represented by a map data structure,
 with paths as the keys and primitive values as the values. All interaction with the resource environment can then
@@ -640,6 +648,15 @@ data Effect
 \subsection{Statements}
 
 Statements are used in order to sequence and combine the above effects into programs in the Resource DSL.
+The most basic statement is the \prog{Do} command, which takes a path to a resource and applies an effect to that
+path. The other statements are a collection of control structures that allow for the sequencing and construction of
+programs out of these \prog{Do} commands. \prog{If} and \prog{For} are straightforward control structures that allow
+for conditional execution and looping, respectively. \prog{In} executes a block in the context of a particular path, where all
+relative paths in an \prog{In} block are evaluated with reference to the supplied path value. This allows
+users to easily describe work that should be done in particular resource sub-environments. \prog{Let} allows for the
+extension of the current variable environment at the statement level. Finally, \prog{Load} permits the calling of named
+subroutines with a list of arguments. 
+
 One particular difficulty arises in determining how to represent a variational block of statements. Typically we
 would use a simple list of statements, but in the variational setting we must ask what kind of variational list
 we should use. Fortunately, recent work \cite{karltodo} has determined \emph{segment lists} to be a particularly
@@ -653,12 +670,12 @@ type SegList a = [Segment a]
 type Block = SegList Stmt
 
 data Stmt
-     = Do Path Effect       -- ^ apply an effect
-     | If (V Expr) Block Block  -- ^ conditional statement
-     | In Path Block        -- ^ do work in a sub-environment
-     | For Var (V Expr) Block   -- ^ loop over indexed sub-environments
-     | Let Var (V Expr) Block   -- ^ extend the variable environment
-     | Load (V Expr) [V Expr] -- ^ load a sub-model or profile
+     = Do Path Effect
+     | If (V Expr) Block Block
+     | In Path Block
+     | For Var (V Expr) Block
+     | Let Var (V Expr) Block
+     | Load (V Expr) [V Expr]
 \end{program}
 
 
