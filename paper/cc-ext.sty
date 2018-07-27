@@ -1,0 +1,88 @@
+%
+% Choice calculus extensions.
+%
+\ProvidesPackage{cc-ext}
+
+\RequirePackage{lambda}
+\RequirePackage{types}
+\RequirePackage{cc}
+
+% early sharing
+\renewcommand{\LET}{\CCkeyw{macro}}
+\newcommand{\letEnv}{\expEnv}
+\newcommand{\seml}[1]{\sem[\letEnv]{#1}}
+\newcommand{\extLetEnv}[2]{\OB{\letEnv(#1)\shortleftarrow\seml{#2}}}
+
+% late sharing
+\newcommand{\SHR}{\CCkeyw{share}}
+\newcommand{\Shr}[2]{\OB{\SHR\;#1\,\BE\;#2}}
+\newcommand{\ShrIn}[3]{\OB{\Shr{#1}{#2}\;\IN\;#3}}
+
+% selection
+\newcommand{\SEL}{\CCkeyw{select}}
+\newcommand{\FROM}{\CCkeyw{from}}
+\newcommand{\Sel}[1]{\OB{\SEL\;#1}}
+\newcommand{\SelFrom}[2]{\OB{\Sel{#1}\;\FROM\;#2}}
+
+% modularity
+\newcommand{\MOD}{\CCkeyw{module}}
+\newcommand{\WHERE}{\CCkeyw{where}}
+\newcommand{\Mod}[2]{\OB{\MOD\;#1}}
+\newcommand{\ModWhere}[2]{\OB{\Mod{#1}\;\;\WHERE\;#2}}
+
+% default selection
+\newcommand{\DEFAULT}{\CCkeyw{default}}
+\newcommand{\Default}[1]{\OB{\DEFAULT\;#1}}
+\newcommand{\DefaultFrom}[2]{\OB{\Default{#1}\;\FROM\;#2}}
+\newcommand{\DefaultTag}[1]{\OB{#1\,\textbf{!}}}
+
+% renaming
+\newcommand{\RENAME}{\CCkeyw{rename}}
+\newcommand{\Rename}[2]{\OB{\RENAME\;#2/#1}}
+\newcommand{\RenameIn}[3]{\OB{\Rename{#1}{#2}\;\IN\;#3}}
+
+% projection
+\newcommand{\PROJ}{\CCkeyw{project}}
+\newcommand{\Project}[1]{\OB{\PROJECT\;#1}}
+\newcommand{\ProjectFrom}[2]{\OB{\Project{#1}\;\FROM\;#2}}
+
+% configuration type
+\newcommand{\Conf}{\OB{\Delta}}
+\newcommand{\simpCT}[3][D.t]{\OB{#2\mathrel{\stackrel{#1}{\rightharpoondown}}#3}}
+\newcommand{\simpCTw}[3][D.t]{\simpCT{#2\;}{\;#3}}
+\newcommand{\simpCTi}[2][D.t]{\simpCT{\Conf_{#2}}{\Conf_{#2}'}}
+
+
+% type of fully configured expressions
+\newcommand{\FullConf}{\OB{\Phi}}
+
+% dependent configuration types
+\newcommand{\depConf}[2][t]{\OB{#1\Rightarrow#2}}
+\newcommand{\nodepConf}[1]{\depConf[#1]{\FullConf}}
+\newcommand{\dimConf}{\chc{\depConf{\Conf},\ldots,\depConf{\Conf}}}
+\newcommand{\dimConfn}[2][D]{\chc[#1]{\depConf[t_1]{\Conf_1},\ldots,\depConf[t_{#2}]{\Conf_{#2}}}}
+\newcommand{\dimConfnp}[2][D]{\chc[#1]{\depConf[t_1]{\Conf_1'},\ldots,\depConf[t_{#2}]{\Conf_{#2}'}}}
+% \newcommand{\dimConfn}[2][D]{\chc[#1]{(\depConf[t_i]{\Conf_i})^{i:1..#2}}}
+% \newcommand{\dimConfnp}[2][D]{\chc[#1]{(\depConf[t_i]{\Conf_i'})^{i:1..#2}}}
+
+% sequencing configuration types
+\newcommand{\consConfOp}{\OB{;}}
+\newcommand{\consConf}[2]{\OB{#1\consConfOp#2}}
+\newcommand{\leafConf}[1]{\consConf{#1}{\FullConf}}
+
+% concatenating config types
+\newcommand{\catConfOp}{\OB{\oplus}}
+\newcommand{\catConf}[2]{\OB{#1\catConfOp#2}}
+
+% denotational semantics
+\newcommand{\edec}{\OB{\varepsilon}}       % empty decision
+\newcommand{\denot}[1]{\set{#1}}           % denotation
+\newcommand{\delem}[2]{\OB{#1\Rightarrow#2}} % denotation element/entry
+\newcommand{\elist}{\OB{\varepsilon}}
+\newcommand{\qb}{\OB{\delta}}
+% \newcommand{\qbl}{\bar{q_l}}
+% \newcommand{\qbr}{\bar{q_r}}
+
+% operational semantics
+\newcommand{\reduceToOp}{\OB{\longrightarrow}}
+\newcommand{\reduceTo}[2]{\OB{#1\reduceToOp#2}}

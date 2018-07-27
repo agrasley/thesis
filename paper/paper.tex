@@ -18,7 +18,9 @@
 \usepackage{enumerate}
 \usepackage{fancyvrb}
 \usepackage{mathpartir}
-\usepackage{syntax}
+\usepackage{lambda}
+\usepackage{cc}
+\usepackage{cc-ext}
                              
 
 %%%
@@ -40,8 +42,6 @@
     \parsep0pt plus0pt
     \parskip0pt\topsep0pt}
 
-\newcommand{\prog}[1]{{\small\texttt{#1}}}
-
 \newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
 
 \usepackage{geometry}
@@ -57,6 +57,7 @@
 \section{Introduction}
 
 %% TODO
+Variation is a constant element in modern software systems. 
 
 \section{Background}
 
@@ -103,7 +104,7 @@ select the same alternative. For example, in the expression $\tagtree{A}{1}{2}+\
 the only possible selections are $1+3$ and $2+4$, while $1+4$ and $2+3$ can never occur due
 to synchronization.
 
-We say that a choice is $configured$ when all conditions
+We say that a choice is \emph{configured} when all conditions
 have been eliminated, yielding a plain value without choices. We call these resulting plain values
 \emph{variants}. We define a function \emph{conf} which takes a
 \emph{configuration} and a variational value and produces a variant. Under the view of dimensions as representing distinct features, a configuration for a formula tree gives
@@ -269,7 +270,7 @@ plain interpreter within the applicative functor for choices works well for any 
 and side-effect free. The only area of concern is associated with the use of data structures in the
 interpretation of the language, which often benefit from being replaced with custom variational data structures that
 provide greater sharing and efficiency. Recent work has explored the benefits of custom variational
-data structures for maps \cite{erictodo}, linked lists \cite{karltodo}, and stacks \cite{mengtodo}.
+data structures for maps \cite{walkingshaw2014variational}, linked lists \cite{lists}, and stacks \cite{stacks}.
 As such, exercising proper care in the selection and integration of variational data structures
 into a variational interpreter resolves this issue.
 
@@ -400,21 +401,58 @@ In the non-variational context we have no need to store and remember error value
 because we simply return the error value immediately when it is thrown. In the variational context, we
 must now store these values while we continue to evaluate variants that are not in an error state.
 
+\subsection{Comparison with Existing Work}
+
+At this point, it should be apparent that introducing choices into a side-effectful imperative language
+is anything but straightforward. The issues described above have been encountered repeatedly in efforts to
+make variational versions of the While language \cite{varwhile}, PHP \cite{varex}, and Java \cite{varexj}.
+The work on Varex the variational PHP interpreter, in particular demonstrates useful strategies for dealing
+with mutable state and exceptions in a variational language.
+In our work on the Resource DSL we independently discovered many of the same techniques used by Varex
+to deal with these issues.
+This work builds on the methods of handling variational effects discovered in the efforts to variationalize the
+above languages by providing a formal operational semantics for the IMP language, a simple, albeit Turing-complete, imperative
+language. It is our hope that a formal operational semantics for a simple imperative language will allow for easy application
+and extension to variational imperative languages of differing levels of complexity.
+
 \section{IMP with Effects}
+
+\begin{syntax}
+\text{(Arithmetic expressions)}\\
+a &::=& n & \textit{Integer literal} \\
+& | & x & \textit{Variable reference} \\
+& | & a + a & \textit{Addition} \\
+\text{(Boolean literals)} \\
+b &::=& \CCkeyw{true} \\
+& | & \CCkeyw{false} \\
+\text{(Boolean expressions)} \\
+e &::=& b & \textit{Boolean literal} \\
+& | & \CCkeyw{not}\ e & \textit{Negation} \\
+& | & e\ \CCkeyw{and}\ e & \textit{Conjunction} \\
+& | & a < a & \textit{Less} \\
+\text{(Statements)} \\
+s &::=& \CCkeyw{skip} & \textit{Noop} \\
+& | & x \coloneqq a & \textit{Assignment} \\
+& | & s\ ;\ s & \textit{Sequencing} \\
+& | & \CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s & \textit{Conditional} \\
+& | & \CCkeyw{while}\ e\ \CCkeyw{do}\ s & \textit{Looping} \\
+& | & \CCkeyw{throw}\ a & \textit{Throw error} \\
+& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s & \textit{Catch error}
+\end{syntax}
 
 \def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
 
 \def \BigVar {\infer [A-Ref] { } {(S,x) \Downarrow_A S(x)}}
 
-\def \BigAdd {\infer [A-Add] {(S,e) \Downarrow_A n \\ (S,e') \Downarrow_A n' } {(S,e+e') \Downarrow_A n+n'}}
+\def \BigAdd {\infer [A-Add] {(S,a) \Downarrow_A n \\ (S,a') \Downarrow_A n' } {(S,a+a') \Downarrow_A n+n'}}
 
-\def \BigB {\infer [B-Bool] { } {(S,b) \Downarrow_B b}}
+\def \BigB {\infer [B-Bool] { } {(S.b) \Downarrow_B b}}
 
-\def \BigNot {\infer [B-Not] {(S,e) \Downarrow_B b} {(S,\text{not}\ e) \Downarrow_B \neg b}}
+\def \BigNot {\infer [B-Not] {(S,e) \Downarrow_B b} {(S,\CCkeyw{not}\ e) \Downarrow_B \neg b}}
 
-\def \BigAnd {\infer [B-And] {(S,e) \Downarrow_B b \\ (S,e') \Downarrow_B b'} {(S,e\ \text{and}\ e') \Downarrow_B b \wedge b'}}
+\def \BigAnd {\infer [B-And] {(S,e) \Downarrow_B b \\ (S,e') \Downarrow_B b'} {(S,e\ \CCkeyw{and}\ e') \Downarrow_B b \wedge b'}}
 
-\def \BigLess {\infer [B-Less] {(S,e) \Downarrow_A n \\ (S,e') \Downarrow_A n'} {(S,e<e') \Downarrow_B n<n'}}
+\def \BigLess {\infer [B-Less] {(S,a) \Downarrow_A n \\ (S,a') \Downarrow_A n'} {(S,a<a') \Downarrow_B n<n'}}
 
 \begin{mathpar}
 \BigN \and
@@ -427,17 +465,17 @@ must now store these values while we continue to evaluate variants that are not 
 \end{mathpar}
 
 \def \nothing {\bullet}
-\def \BigErr {\infer [S-Err] { } {(\mathit{err}\ n,S,s) \Downarrow_S (\mathit{err}\ n,S)}}
-\def \BigSkip {\infer [S-Skip] { } {(E,S,\text{skip}) \Downarrow_S (E,S)}}
-\def \BigAssn {\infer [S-Assn] {(S,e) \Downarrow_A n} {(\nothing,S,x \coloneqq e) \Downarrow_S (\nothing,S[x \rightarrow n])}}
-\def \BigSeq {\infer [S-Seq] {(E,S,s) \Downarrow_S (E',S') \\ (E',S',s') \Downarrow_S (E'',S'')} {(E,S,s\ \text{seq}\ s') \Downarrow_S (E'',S'')}}
-\def \BigIfT {\infer [S-IfT] {(S,e) \Downarrow_B \mathit{true} \\ (\nothing,S,s) \Downarrow_S (E,S')} {(\nothing,S,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_S (E,S')}}
-\def \BigIfF {\infer [S-IfF] {(S,e) \Downarrow_B \mathit{false} \\ (\nothing,S,s') \Downarrow_S (E,S')} {(\nothing,S,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_S (E,S')}}
-\def \BigWhileT {\infer [S-WhileT] {(S,e) \Downarrow_B \mathit{true} \\ (\nothing,S,s) \Downarrow_S (E,S') \\ (E,S',\text{while}\ e\ \text{do}\ s) \Downarrow_S (E',S'')} {(\nothing,S,\text{while}\ e\ \text{do}\ s) \Downarrow_S (E',S'')}}
-\def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \mathit{false}} {(E,S,\text{while}\ e\ \text{do}\ s) \Downarrow_S (E,S)}}
-\def \BigThrow {\infer [S-Throw] {(S,e) \Downarrow_A n} {(\nothing,S,\text{throw}\ e) \Downarrow_S (\mathit{err}\ n,S)}}
-\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_S (\nothing,S')}}
-\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (\mathit{err}\ n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_S (E,S''[x \rightarrow S'(x)])}}
+\def \BigErr {\infer [S-Err] { } {(n,S,s) \Downarrow_S (n,S)}}
+\def \BigSkip {\infer [S-Skip] { } {(E,S,\CCkeyw{skip}) \Downarrow_S (E,S)}}
+\def \BigAssn {\infer [S-Assn] {(S,a) \Downarrow_A n} {(\nothing,S,x \coloneqq a) \Downarrow_S (\nothing,S[x \rightarrow n])}}
+\def \BigSeq {\infer [S-Seq] {(E,S,s) \Downarrow_S (E',S') \\ (E',S',s') \Downarrow_S (E'',S'')} {(E,S,s\ ;\ s') \Downarrow_S (E'',S'')}}
+\def \BigIfT {\infer [S-IfT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
+\def \BigIfF {\infer [S-IfF] {(S,e) \Downarrow_B \CCkeyw{false} \\ (\nothing,S,s') \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
+\def \BigWhileT {\infer [S-WhileT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S') \\ (E,S',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')} {(\nothing,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')}}
+\def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \CCkeyw{false}} {(E,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E,S)}}
+\def \BigThrow {\infer [S-Throw] {(S,a) \Downarrow_A n} {(\nothing,S,\CCkeyw{throw}\ a) \Downarrow_S (n,S)}}
+\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_S (\nothing,S')}}
+\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_S (E,S''[x \rightarrow S'(x)])}}
 
 \begin{mathpar}
 \BigErr \and
@@ -659,7 +697,7 @@ subroutines with a list of arguments.
 
 One particular difficulty arises in determining how to represent a variational block of statements. Typically we
 would use a simple list of statements, but in the variational setting we must ask what kind of variational list
-we should use. Fortunately, recent work \cite{karltodo} has determined \emph{segment lists} to be a particularly
+we should use. Fortunately, recent work \cite{lists} has determined \emph{segment lists} to be a particularly
 efficient implementation of variational linked lists. A segment list is a list of segments, where segments are either
 plain lists or a choice between segment lists. Therefore, we define our blocks to be segment lists of
 statements.

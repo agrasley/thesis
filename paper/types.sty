@@ -1,0 +1,100 @@
+%
+% Choice calculus definitions.
+%
+\ProvidesPackage{types}
+
+\RequirePackage{lambda}
+
+% type declaration
+\newcommand{\ofType}[2]{\OB{#1:#2}}
+
+% typing environment
+\newcommand{\Env}{\OB{\Gamma}}
+\newcommand{\EmptyEnv}{\OB{\varnothing}}
+\newcommand{\AllEnvs}{\Env}
+\newcommand{\extEnv}[2][\Env]{\OB{#1,\;#2}}
+\newcommand{\extEnvType}[3][\Env]{\extEnv[#1]{\ofType{#2}{#3}}}
+\newcommand{\inEnv}[2][\Env]{\OB{#2\in#1}}
+\newcommand{\inEnvType}[3][\Env]{\inEnv[#1]{\ofType{#2}{#3}}}
+
+% typing judgments
+\newcommand{\wjudg}[2][\Gamma]{\OB{#1\vdash#2\textit{~wf}}}
+\newcommand{\judg}[3][\AllEnvs]{\OB{#1\vdash\ofType{#2}{#3}}}
+
+
+% Below copied from vlc.sty
+
+%
+% Lambda Calculus
+%
+
+% constants
+\newcommand{\cMeta}{\OB{c}}
+
+% abstraction
+\newcommand{\lam}[2]{\OB{\lambda#1.#2}}
+\newcommand{\lamp}[2]{\lam{\prog{#1}}{\prog{#2}}}
+
+% application
+\newcommand{\app}[2]{\OB{#1~#2}}
+
+% tuples
+\newcommand{\tup}[2]{\lam{f}{\app{\app{f}{#1}}{#2}}}
+
+% some values
+\newcommand{\id}{\prog{id}}
+\newcommand{\suc}{\prog{succ}}
+\newcommand{\tru}{\prog{True}}
+\newcommand{\fls}{\prog{False}}
+
+
+%
+% Variational Types and Selectors
+%
+
+% type constants
+\newcommand{\tyc}{\OB{\tau}}
+\newcommand{\Int}{\prog{Int}}
+\newcommand{\Bool}{\prog{Bool}}
+\newcommand{\Char}{\prog{Char}}
+
+% function types
+\newcommand{\fun}[2]{\OB{#1\to#2}}
+
+% tuple types
+\newcommand{\tupt}[2]{\fun{(\fun{\fun{#1}{#2}}{a})}{a}}
+
+% qualification metavariable
+\newcommand{\qm}{\OB{q}}
+
+% qualified type variables
+\newcommand{\qv}[2]{\OB{#1_{#2}}}
+
+% selectors
+\newcommand{\fst}[1]{\OB{#1}}
+\newcommand{\snd}[1]{\OB{\tilde{#1}}}
+
+% constructing qualifications
+\newcommand{\qemp}{\OB{\epsilon}}
+\newcommand{\qcons}[2]{\OB{#1#2}}
+\newcommand{\qcf}[2]{\qcons{\fst{#1}}{#2}}
+\newcommand{\qcs}[2]{\qcons{\snd{#1}}{#2}}
+
+% shortcuts for qualified type variables up to choice-nesting level of two
+\newcommand{\qf}[2]{\qv{#1}{\fst{#2}}}
+\newcommand{\qs}[2]{\qv{#1}{\snd{#2}}}
+\newcommand{\qfq}[3]{\qv{#1}{\qcf{#2}{#3}}}
+\newcommand{\qsq}[3]{\qv{#1}{\qcs{#2}{#3}}}
+\newcommand{\qff}[3]{\qfq{#1}{#2}{\fst{#3}}}
+\newcommand{\qfs}[3]{\qfq{#1}{#2}{\snd{#3}}}
+\newcommand{\qsf}[3]{\qsq{#1}{#2}{\fst{#3}}}
+\newcommand{\qss}[3]{\qsq{#1}{#2}{\snd{#3}}}
+
+% generic qualified variables
+\newcommand{\gqv}{\qv{a}{\qm}}
+\newcommand{\gqvf}[2][\qm]{\qfq{a}{#2}{#1}}
+\newcommand{\gqvs}[2][\qm]{\qsq{a}{#2}{#1}}
+
+% tag list (decision)
+\newcommand{\tagL}[1]{\OB{\overline{#1}}}
+
