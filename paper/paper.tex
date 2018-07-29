@@ -417,6 +417,7 @@ and extension to variational imperative languages of differing levels of complex
 
 \section{IMP with Effects}
 
+\begin{figure}
 \begin{syntax}
 \text{(Arithmetic expressions)}\\
 a &::=& n & \textit{Integer literal} \\
@@ -439,6 +440,9 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & \CCkeyw{throw}\ a & \textit{Throw error} \\
 & | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s & \textit{Catch error}
 \end{syntax}
+\caption{Syntax of IMP with Effects}
+\label{fig:impsyn}
+\end{figure}
 
 \def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
 
@@ -446,13 +450,20 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 
 \def \BigAdd {\infer [A-Add] {(S,a) \Downarrow_A n \\ (S,a') \Downarrow_A n' } {(S,a+a') \Downarrow_A n+n'}}
 
-\def \BigB {\infer [B-Bool] { } {(S.b) \Downarrow_B b}}
+\def \BigB {\infer [B-Bool] { } {(S,b) \Downarrow_B b}}
 
 \def \BigNot {\infer [B-Not] {(S,e) \Downarrow_B b} {(S,\CCkeyw{not}\ e) \Downarrow_B \neg b}}
 
 \def \BigAnd {\infer [B-And] {(S,e) \Downarrow_B b \\ (S,e') \Downarrow_B b'} {(S,e\ \CCkeyw{and}\ e') \Downarrow_B b \wedge b'}}
 
 \def \BigLess {\infer [B-Less] {(S,a) \Downarrow_A n \\ (S,a') \Downarrow_A n'} {(S,a<a') \Downarrow_B n<n'}}
+
+\begin{figure}
+\begin{syntax}
+\text{(Store)}\\
+S &::=& S(x) & \textit{Lookup x in S} \\
+& | & S[x \rightarrow n] & \textit{Update x in S to n}
+\end{syntax}
 
 \begin{mathpar}
 \BigN \and
@@ -463,6 +474,9 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 \BigAnd \and
 \BigLess
 \end{mathpar}
+\caption{Big-step semantics of IMP expressions}
+\label{fig:impexpr}
+\end{figure}
 
 \def \nothing {\bullet}
 \def \BigErr {\infer [S-Err] { } {(n,S,s) \Downarrow_S (n,S)}}
@@ -477,6 +491,17 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 \def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_S (\nothing,S')}}
 \def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_S (E,S''[x \rightarrow S'(x)])}}
 
+\begin{figure}
+\begin{syntax}
+\text{(Store)}\\
+S &::=& S(x) & \textit{Lookup x in S} \\
+& | & S[x \rightarrow n] & \textit{Update x in S to n} \\
+\text{(Error context)} \\
+E &::=& \nothing & \textit{No error} \\
+& | & n & \textit{Error with value n}
+\end{syntax}
+
+
 \begin{mathpar}
 \BigErr \and
 \BigSkip \and
@@ -490,9 +515,38 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 \BigTry \and
 \BigCatch
 \end{mathpar}
+\caption{Big-step semantics of IMP with Effects statements}
+\label{fig:impstmt}
+\end{figure}
 
 
 \section{Variational IMP with Effects}
+
+\begin{syntax}
+\text{(Arithmetic expressions)}\\
+a &::=& n & \textit{Integer literal} \\
+& | & x & \textit{Variable reference} \\
+& | & a + a & \textit{Addition} \\
+& | & \tagtree{D}{a}{a} & \textit{Choice} \\
+\text{(Boolean literals)} \\
+b &::=& \CCkeyw{true} \\
+& | & \CCkeyw{false} \\
+\text{(Boolean expressions)} \\
+e &::=& b & \textit{Boolean literal} \\
+& | & \CCkeyw{not}\ e & \textit{Negation} \\
+& | & e\ \CCkeyw{and}\ e & \textit{Conjunction} \\
+& | & a < a & \textit{Less} \\
+& | & \tagtree{D}{e}{e} & \textit{Choice} \\
+\text{(Statements)} \\
+s &::=& \CCkeyw{skip} & \textit{Noop} \\
+& | & x \coloneqq a & \textit{Assignment} \\
+& | & s\ ;\ s & \textit{Sequencing} \\
+& | & \CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s & \textit{Conditional} \\
+& | & \CCkeyw{while}\ e\ \CCkeyw{do}\ s & \textit{Looping} \\
+& | & \CCkeyw{throw}\ a & \textit{Throw error} \\
+& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s & \textit{Catch error} \\
+& | & \tagtree{D}{s}{s} & \textit{Choice}
+\end{syntax}
 
 \def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
 \def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
