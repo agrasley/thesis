@@ -462,7 +462,6 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 \begin{syntax}
 \text{(Store)}\\
 S &::=& S(x) & \textit{Lookup x in S} \\
-& | & S[x \rightarrow n] & \textit{Update x in S to n}
 \end{syntax}
 
 \begin{mathpar}
@@ -522,21 +521,28 @@ E &::=& \nothing & \textit{No error} \\
 
 \section{Variational IMP with Effects}
 
+\begin{figure}
 \begin{syntax}
+\text{(Boolean literals)} \\
+b &::=& \CCkeyw{true} \\
+& | & \CCkeyw{false} \\
+\text{(Conditions)}\\
+C &::=& b & \textit{Boolean literal} \\
+& | & D & \textit{Dimension name} \\
+& | & \neg C & \textit{Negation} \\
+& | & C \vee C & \textit{Disjunction} \\
+& | & C \wedge C & \textit{Conjunction} \\
 \text{(Arithmetic expressions)}\\
 a &::=& n & \textit{Integer literal} \\
 & | & x & \textit{Variable reference} \\
 & | & a + a & \textit{Addition} \\
-& | & \tagtree{D}{a}{a} & \textit{Choice} \\
-\text{(Boolean literals)} \\
-b &::=& \CCkeyw{true} \\
-& | & \CCkeyw{false} \\
+& | & \tagtree{C}{a}{a} & \textit{Choice} \\
 \text{(Boolean expressions)} \\
 e &::=& b & \textit{Boolean literal} \\
 & | & \CCkeyw{not}\ e & \textit{Negation} \\
 & | & e\ \CCkeyw{and}\ e & \textit{Conjunction} \\
 & | & a < a & \textit{Less} \\
-& | & \tagtree{D}{e}{e} & \textit{Choice} \\
+& | & \tagtree{C}{e}{e} & \textit{Choice} \\
 \text{(Statements)} \\
 s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & x \coloneqq a & \textit{Assignment} \\
@@ -545,25 +551,38 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & \CCkeyw{while}\ e\ \CCkeyw{do}\ s & \textit{Looping} \\
 & | & \CCkeyw{throw}\ a & \textit{Throw error} \\
 & | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s & \textit{Catch error} \\
-& | & \tagtree{D}{s}{s} & \textit{Choice}
+& | & \tagtree{C}{s}{s} & \textit{Choice}
 \end{syntax}
+\caption{Syntax of Variational IMP with Effects}
+\label{fig:vimpsyn}
+\end{figure}
 
 \def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
 \def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
-\def \BigVAdd {\infer [VA-Add] {(C,S,e) \Downarrow_{VA} v \\ (C,S,e') \Downarrow_{VA} v'} {(C,S,e+e') \Downarrow_{VA} \mathit{liftV2}(+,v,v')}}
-\def \BigVAChcOne {\infer [VA-Chc1] {\mathit{sat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VA} v \\ (C \wedge \neg A,S,e') \Downarrow_{VA} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \tagtree{A}{v}{v'}}}
-\def \BigVAChcTwo {\infer [VA-Chc2] {\mathit{unsat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge \neg A,S,e') \Downarrow_{VA} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \tagtree{A}{\nothing}{v'}}}
-\def \BigVAChcThree {\infer [VA-Chc3] {\mathit{sat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VA} v} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \tagtree{A}{v}{\nothing}}}
-\def \BigVAChcFour {\infer [VA-Chc4] {\mathit{unsat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A)} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VA} \nothing}}
+\def \BigVAdd {\infer [VA-Add] {(C,S,e) \Downarrow_{VA} u \\ (C,S,e') \Downarrow_{VA} u'} {(C,S,e+e') \Downarrow_{VA} \mathit{liftA2}(+,u,u')}}
+\def \BigVAChcOne {\infer [VA-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} u \\ (C \wedge \neg C',S,a') \Downarrow_{VA} u'} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} \tagtree{C'}{u}{u'}}}
+\def \BigVAChcTwo {\infer [VA-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,a') \Downarrow_{VA} u} {(C,S,\tagtree{A}{a}{a'}) \Downarrow_{VA} u}}
+\def \BigVAChcThree {\infer [VA-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} u} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} u}}
 
 \def \BigVB {\infer [VB-Bool] { } {(C,S,b) \Downarrow_{VB} b}}
-\def \BigVNot {\infer [VB-Not] {(C,S,e) \Downarrow_{VB} v} {(C,S,\text{not}\ e) \Downarrow_{VB} \mathit{liftV}(\neg,v)}}
-\def \BigVAnd {\infer [VB-And] {(C,S,e) \Downarrow_{VB} v \\ (C,S,e') \Downarrow_{VB} v'} {(C,S,e\ \text{and}\ e') \Downarrow_{VB} \mathit{liftV2}(\wedge,v,v')}}
-\def \BigVLess {\infer [VB-Less] {(C,S,e) \Downarrow_{VA} v \\ (C,S,e') \Downarrow_{VA} v'} {(C,S,e<e') \Downarrow_{VB} \mathit{liftV2}(<,v,v')}}
-\def \BigVBChcOne {\infer [VB-Chc1] {\mathit{sat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VB} v \\ (C \wedge \neg A,S,e') \Downarrow_{VB} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \tagtree{A}{v}{v'}}}
-\def \BigVBChcTwo {\infer [VB-Chc2] {\mathit{unsat}(C \wedge A) \\ \mathit{sat}(C \wedge \neg A) \\ (C \wedge \neg A,S,e') \Downarrow_{VB} v'} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \tagtree{A}{\nothing}{v'}}}
-\def \BigVBChcThree {\infer [VB-Chc3] {\mathit{sat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A) \\ (C \wedge A,S,e) \Downarrow_{VB} v} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \tagtree{A}{v}{\nothing}}}
-\def \BigVBChcFour {\infer [VB-Chc4] {\mathit{unsat}(C \wedge A) \\ \mathit{unsat}(C \wedge \neg A)} {(C,S,\tagtree{A}{e}{e'}) \Downarrow_{VB} \nothing}}
+\def \BigVNot {\infer [VB-Not] {(C,S,e) \Downarrow_{VB} v} {(C,S,\CCkeyw{not}\ e) \Downarrow_{VB} \mathit{liftA}(\neg,v)}}
+\def \BigVAnd {\infer [VB-And] {(C,S,e) \Downarrow_{VB} v \\ (C,S,e') \Downarrow_{VB} v'} {(C,S,e\ \CCkeyw{and}\ e') \Downarrow_{VB} \mathit{liftA2}(\wedge,v,v')}}
+\def \BigVLess {\infer [VB-Less] {(C,S,e) \Downarrow_{VA} v \\ (C,S,e') \Downarrow_{VA} v'} {(C,S,e<e') \Downarrow_{VB} \mathit{liftA2}(<,v,v')}}
+\def \BigVBChcOne {\infer [VB-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} v \\ (C \wedge \neg C',S,e') \Downarrow_{VB} v'} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \tagtree{C'}{v}{v'}}}
+\def \BigVBChcTwo {\infer [VB-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,e') \Downarrow_{VB} v} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} v}}
+\def \BigVBChcThree {\infer [VB-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} v} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} v}}
+
+\begin{figure}
+\begin{syntax}
+\text{(Store)}\\
+S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
+\text{(Variational integers)}\\
+u &::=& n & \textit{Integer literal} \\
+& | & \tagtree{C}{u}{u} & \textit{Choice} \\
+\text{(Variational booleans)}\\
+v &::=& b & \textit{Boolean literal} \\
+& | & \tagtree{C}{v}{v} & \textit{Choice}
+\end{syntax}
 
 \begin{mathpar}
 \BigVNum \and
@@ -572,59 +591,53 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 \BigVAChcOne \and
 \BigVAChcTwo \and
 \BigVAChcThree \and
-\BigVAChcFour \and
 \BigVB \and
 \BigVNot \and
 \BigVAnd \and
 \BigVLess \and
 \BigVBChcOne \and
 \BigVBChcTwo \and
-\BigVBChcThree \and
-\BigVBChcFour
+\BigVBChcThree
 \end{mathpar}
+\label{fig:vimpexpr}
+\caption{Big-step semantics of Variational IMP with Effects expressions}
+\end{figure}
 
 \newcommand{\GetCtx}[2]{\mathit{ctx}(#1,#2)}
+\def \gc {\GetCtx{C}{E}}
 \def \T {\mathit{true}}
 \def \F {\mathit{false}}
-\def \BigVErr {\infer [VS-Err] { } {(C,S,E,\T,s) \Downarrow_{VS} (S,E,\T)}}
-\def \BigVSkip {\infer [VS-Skip] { } {(C,S,E,F,\text{skip}) \Downarrow_{VS} (S,E,F)}}
-\def \BigVAssn {\infer [VS-Assn] {(\GetCtx{C}{E},S,e) \Downarrow_{VA} v} {(C,S,E,\F,x \coloneqq e) \Downarrow_{VS} (S[(\GetCtx{C}{E},x) \rightarrow v],E,\F)}}
-\def \BigVSeq {\infer [VS-Seq] {(C,S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C,S',E',F,s') \Downarrow_{VS} (S'',E'',F')} {(C,S,E,s\ \text{seq}\ s') \Downarrow_{VS} (S'',E'',F')}}
-\def \BigVIfOne {\infer [VS-If1] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E'}) \\ (C \wedge \mathit{whenFalse}(v),S',E',\F) \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S'',E'',F \wedge F')}}
-\def \BigVIfTwo {\infer [VS-If2] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E}) \\ (C \wedge \mathit{whenFalse}(v),S,E,\F) \Downarrow_{VS} (S',E',F)} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S',E',F)}}
-\def \BigVIfThree {\infer [VS-If3] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E'})} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S',E',F)}}
-\def \BigVIfFour {\infer [VS-If4] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenFalse}(v)}{E'})} {(C,S,E,\F,\text{if}\ e\ \text{then}\ s\ \text{else}\ s') \Downarrow_{VS} (S,E,\F)}}
-\def \BigVWhileT {\infer [VS-WhileT] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C \wedge \mathit{whenTrue}(v),S',E',F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S'',E'',F')}}
-\def \BigVWhileF {\infer [VS-WhileF] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E})} {(C,S,E,\F,\text{while}\ e\ \text{do}\ s) \Downarrow_{VS} (S,E,\F)}}
-\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{h:t},S,e) \Downarrow_{VA} v} {(C,S,h:t,\F,\text{throw}\ e) \Downarrow_{VS} (S,((C,v):h):t,\T)}}
-\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,\F,s) \Downarrow_{VS} (S',[]:E,\F)} {(C,S,E,\F,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_{VS} (S',E,\F)}}
-\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,\F,s) \Downarrow_{VS} (S',(h:t):E,F) \\ (C \wedge \mathit{catchCtx}(h:t),S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(h:t)],E,\F,s']) \Downarrow_{VS} (S'',E',F')} {(C,S,E,\F,\text{try}\ s\ \text{catch}\ x\ \text{in}\ s') \Downarrow_{VS} (S''[(\T,x) \rightarrow S'(\T,x)],E',F')}}
-\def \BigVChcOne {\infer [VS-Chc1] {\mathit{sat}(\GetCtx{C}{E} \wedge A) \\ \mathit{sat}(\GetCtx{C}{E} \wedge \neg A) \\ (C \wedge A,S,E,\F,s) \Downarrow_{VS} (S',E',F) \\ (C \wedge \neg A,S',E',\F,s') \Downarrow_{VS} (S'',E'',F')} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S'',E'',F \wedge F')}}
-\def \BigVChcTwo {\infer [VS-Chc2] {\mathit{unsat}(\GetCtx{C}{E} \wedge A) \\ \mathit{sat}(\GetCtx{C}{E} \wedge \neg A) \\ (C \wedge \neg A,S,E,\F,s') \Downarrow_{VS} (S',E',F)} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S',E',F)}}
-\def \BigVChcThree {\infer [VS-Chc3] {\mathit{sat}(\GetCtx{C}{E} \wedge A) \\ \mathit{unsat}(\GetCtx{C}{E} \wedge \neg A) \\ (C \wedge A,S,E,\F,s) \Downarrow_{VS} (S',E',F)} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S',E',F)}}
-\def \BigVChcFour {\infer [VS-Chc4] {\mathit{unsat}(\GetCtx{C}{E} \wedge A) \\ \mathit{unsat}(\GetCtx{C}{E} \wedge \neg A)} {(C,S,E,\F,\tagtree{A}{s}{s'}) \Downarrow_{VS} (S,E,\T)}}
+\def \BigVUnsat {\infer [V-Unsat] {\mathit{unsat}(\gc)} {(C,S,E,s) \Downarrow_{V} (S,E)}}
+\def \BigVSat {\infer [V-Sat] {\mathit{sat}(\gc) \\ (C,S,E,s) \Downarrow_{VS} (S',E')} {(C,S,E,s) \Downarrow_{V} (S',E')}}
+\def \BigVSkip {\infer[VS-Skip] { } {(C,S,E,\CCkeyw{skip}) \Downarrow_{VS} (S,E)}}
+\def \BigVAssn {\infer[VS-Assn] {(\gc,S,a) \Downarrow_{VA} u} {(C,S,E,x \coloneqq a) \Downarrow_{VS} (S[(\gc,x) \rightarrow u],E)}}
+\def \BigVSeq {\infer [VS-Seq] {(C,S,E,s) \Downarrow_{V} (S',E') \\ (C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,s\ ;\ s') \Downarrow_{VS} (S'',E'')}}
+\def \BigVIf {\infer [VS-If] {(\gc,S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenFalse}(v),S',E') \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_{VS} (S'',E'')}}
+\def \BigVWhileT {\infer [VS-WhileT] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{VS} (S',E') \\ (C \wedge \mathit{whenTrue}(v),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
+\def \BigVWhileF {\infer [VS-WhileF] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E})} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S,E)}}
+\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{h:t},S,a) \Downarrow_{VA} u} {(C,S,h:t,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,u):h):t)}}
+\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S',E)}}
+\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',h:E) \\ (\GetCtx{C}{(h:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(h)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S''[(\T,x) \rightarrow S'(\T,x)],E')}}
+\def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
 
+\begin{figure}
 \begin{mathpar}
-\BigVErr \and
+\BigVSat \and
+\BigVUnsat \and
 \BigVSkip \and
 \BigVAssn \and
 \BigVSeq \and
-\BigVIfOne \and
-\BigVIfTwo \and
-\BigVIfThree \and
-\BigVIfFour \and
+\BigVIf \and
 \BigVWhileT \and
 \BigVWhileF \and
 \BigVThrow \and
 \BigVTry \and
-\BigVCatch
+\BigVCatch \and
+\BigVChc
 \end{mathpar}
-\begin{mathpar}
-\BigVChcOne \and
-\BigVChcTwo \and
-\BigVChcThree \and
-\BigVChcFour
-\end{mathpar}
+\caption{Big-step semantics of Variational Imp with Effects statements}
+\label{fig:vimpstmt}
+\end{figure}
 
 \section{The Resource DSL}
 
