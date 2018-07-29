@@ -613,14 +613,32 @@ v &::=& b & \textit{Boolean literal} \\
 \def \BigVAssn {\infer[VS-Assn] {(\gc,S,a) \Downarrow_{VA} u} {(C,S,E,x \coloneqq a) \Downarrow_{VS} (S[(\gc,x) \rightarrow u],E)}}
 \def \BigVSeq {\infer [VS-Seq] {(C,S,E,s) \Downarrow_{V} (S',E') \\ (C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,s\ ;\ s') \Downarrow_{VS} (S'',E'')}}
 \def \BigVIf {\infer [VS-If] {(\gc,S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenFalse}(v),S',E') \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_{VS} (S'',E'')}}
-\def \BigVWhileT {\infer [VS-WhileT] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{sat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E}) \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{VS} (S',E') \\ (C \wedge \mathit{whenTrue}(v),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
-\def \BigVWhileF {\infer [VS-WhileF] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ \mathit{unsat}(\GetCtx{C \wedge \mathit{whenTrue}(v)}{E})} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S,E)}}
-\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{h:t},S,a) \Downarrow_{VA} u} {(C,S,h:t,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,u):h):t)}}
+\def \BigVWhile {\infer [VS-While] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenTrue}(v),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
+\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{l:E},S,a) \Downarrow_{VA} u} {(C,S,l:E,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,u):l):E)}}
 \def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S',E)}}
-\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',h:E) \\ (\GetCtx{C}{(h:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(h)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S''[(\T,x) \rightarrow S'(\T,x)],E')}}
+\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\GetCtx{C}{(l:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S''[(\T,x) \rightarrow S'(\T,x)],E')}}
 \def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
 
 \begin{figure}
+\begin{syntax}
+\text{(Store)}\\
+S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
+& | & S[(C,x) \rightarrow u] & \textit{Update x in S to u with context C} \\
+\text{(Variational integers)}\\
+u &::=& n & \textit{Integer literal} \\
+& | & \tagtree{C}{u}{u} & \textit{Choice} \\
+\text{(Variational booleans)}\\
+v &::=& b & \textit{Boolean literal} \\
+& | & \tagtree{C}{v}{v} & \textit{Choice} \\
+\text{(Error lists)} \\
+l &::=& [] & \textit{Nil} \\
+& | & (C,u):l & \textit{Cons} \\
+\text{(Error context)} \\
+E &::=& [] & \textit{Nil} \\
+& | & l : E & \textit{Cons} \\ 
+\end{syntax}
+
+
 \begin{mathpar}
 \BigVSat \and
 \BigVUnsat \and
@@ -628,8 +646,7 @@ v &::=& b & \textit{Boolean literal} \\
 \BigVAssn \and
 \BigVSeq \and
 \BigVIf \and
-\BigVWhileT \and
-\BigVWhileF \and
+\BigVWhile \and
 \BigVThrow \and
 \BigVTry \and
 \BigVCatch \and
