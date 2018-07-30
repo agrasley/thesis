@@ -21,6 +21,7 @@
 \usepackage{lambda}
 \usepackage{cc}
 \usepackage{cc-ext}
+\usepackage{alltt}
                              
 
 %%%
@@ -34,8 +35,15 @@
 \raggedbottom
 \pagestyle{plain}
 
-\DefineVerbatimEnvironment{program}{Verbatim}
-  {baselinestretch=1.0,xleftmargin=5mm,fontsize=\small,samepage=true}
+
+% define Haskell verbatim environments
+\DefineVerbatimEnvironment{hprogram}{Verbatim}
+   {xleftmargin=\progind,fontsize=\progfontsize,
+    commandchars=\\\{\},samepage=true}
+\DefineVerbatimEnvironment{hbprogram}{BVerbatim}
+   {fontsize=\progfontsize,commandchars=\\\{\},samepage=true}
+\newcommand{\hprog}[1]{\textrm{\progfontsize\texttt{#1}}}
+
 
 \def\denseitems{
     \itemsep1pt plus1pt minus1pt
@@ -137,7 +145,7 @@ equally to embedded representations.
 
 Generic formula trees can be represented by the following Haskell datatypes:
 
-\begin{program}
+\begin{hprogram}
 type Dim = String
 data Cond =
     Lit Bool
@@ -147,7 +155,7 @@ data Cond =
   | Or Cond Cond
 
 data V a = One a | Chc Cond (V a) (V a) 
-\end{program}
+\end{hprogram}
 
 The datatype \prog{Cond} represents expressions in our boolean algebra, with dimension names as strings.
 The constructor \prog{One} creates the leaves of a formula tree, while \prog{Chc} creates the nodes.
@@ -156,7 +164,7 @@ This type-generic representation allows us to easily define some useful algebrai
 formula trees via typeclasses. Specifically, formula trees readily support implementation of the
 Functor, Applicative, and Monad typeclasses:
 
-\begin{program}
+\begin{hprogram}
 instance Functor V where
   fmap f (One a) = One (f a)
   fmap f (Chc d l r) = Chc d (fmap f l) (fmap f r)
@@ -170,7 +178,7 @@ instance Monad V where
   return = One
   (One v) >>= f = f v
   (Chc d l r) >>= f = Chc d (l >>= f) (r >>= f)
-\end{program}
+\end{hprogram}
 
 Astute readers will note that because formula trees are merely a special class of binary tree with
 labeled nodes they share identical instances. The usefulness of defining these instances will be made
@@ -229,26 +237,26 @@ If we do not have to worry about side effects in our language that we wish to in
 our task is comparatively easy. We begin by considering a simple arithmetic expression language
 defined by the following Haskell datatype:
 
-\begin{program}
+\begin{hprogram}
 data Arith = N Int | Add Arith Arith | Mul Arith Arith
-\end{program}
+\end{hprogram}
 
 In the non-variational setting we can easily define an interpreter for this language which produces
 values of type \prog{Int}:
 
-\begin{program}
+\begin{hprogram}
 eval :: Arith -> Int
 eval (N i) = i
 eval (Add l r) = eval l + eval r
 eval (Mul l r) = eval l * eval r
-\end{program}
+\end{hprogram}
 
 The process of ``variationalizing" this small example is quite straightforward. First, we add a
 constructor to support choices in our language:
 
-\begin{program}
+\begin{hprogram}
 data Arith = N Int | Add Arith Arith | Mul Arith Arith | AChc Cond Arith Arith
-\end{program}
+\end{hprogram}
 
 Next we modify our interpreter. Instead of returning plain values of type \prog{Int},
 we now return \emph{variational} values of type \prog{V Int}. We then take the cases
@@ -257,13 +265,13 @@ applicative functor instance for \prog{V} we defined in Section 2. Finally, we a
 that handles our new \prog{AChc} constructor and we have completed the conversion of our
 interpreter:
 
-\begin{program}
+\begin{hprogram}
 eval :: Arith -> V Int
 eval (N i) = pure i
 eval (Add l r) = (+) <$> eval l <*> eval r
 eval (Mul l r) = (*) <$> eval l <*> eval r
 eval (AChc d l r) = Chc d (eval l) (eval r)
-\end{program}
+\end{hprogram}
 
 This basic pattern of variationalizing a language by re-situating the
 plain interpreter within the applicative functor for choices works well for any language that is pure
@@ -616,7 +624,7 @@ v &::=& b & \textit{Boolean literal} \\
 \def \BigVWhile {\infer [VS-While] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenTrue}(v),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
 \def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{l:E},S,a) \Downarrow_{VA} u} {(C,S,l:E,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,u):l):E)}}
 \def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S',E)}}
-\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\GetCtx{C}{(l:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S''[(\T,x) \rightarrow S'(\T,x)],E')}}
+\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\GetCtx{C}{(l:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S''[(\CCkeyw{true},x) \rightarrow S'(\CCkeyw{true},x)],E')}}
 \def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
 
 \begin{figure}
@@ -655,6 +663,12 @@ E &::=& [] & \textit{Nil} \\
 \caption{Big-step semantics of Variational Imp with Effects statements}
 \label{fig:vimpstmt}
 \end{figure}
+
+\begin{flalign*}
+& \mathit{ctx}(C,[]) & = &\ C & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & &  & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & &  \\
+& \mathit{ctx}(C,([]:E)) & = &\ \mathit{ctx}(C,E) \\
+& \mathit{ctx}(C,((C',n):xs):ys) & = &\ \mathit{ctx}(C \wedge \neg C',xs:ys)
+\end{flalign*}
 
 \section{The Resource DSL}
 
