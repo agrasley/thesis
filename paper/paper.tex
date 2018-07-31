@@ -423,7 +423,13 @@ above languages by providing a formal operational semantics for the IMP language
 language. It is our hope that a formal operational semantics for a simple imperative language will allow for easy application
 and extension to variational imperative languages of differing levels of complexity.
 
-\section{IMP with Effects}
+\section{IMP}
+
+The IMP language is a simple but Turing-complete imperative programming language \cite{winskel1993formal,nipkow1998winskel,nipkow2014concrete}.
+In our case, IMP's relative simplicity allows for straightforward extension to support exceptions as well as variational execution. IMP also lacks elements such
+as variable scoping, procedure calls or declarations, or the need for a type system. This permits us to focus more completely on the work of formalizing
+the semantics of variational imperative programming without unnecessary complication. Additionally, a less complex semantics should allow our work to
+serve as a base that can be readily extended to more full-featured languages.
 
 \begin{figure}
 \begin{syntax}
@@ -448,9 +454,22 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & \CCkeyw{throw}\ a & \textit{Throw error} \\
 & | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s & \textit{Catch error}
 \end{syntax}
-\caption{Syntax of IMP with Effects}
+\caption{Syntax of IMP with Exceptions}
 \label{fig:impsyn}
 \end{figure}
+
+We begin by establishing the syntax and semantics of plain IMP before turning to variational IMP. The syntax of plain IMP is defined in Figure \ref{fig:impsyn}.
+At its base IMP defines simple arithmetic expressions made up of integer literals, variable references, and addition. IMP also supports boolean expressions
+made up of literals, negation, conjunction, and less-than comparison of arithmetic expressions. Statements include variable assignment, sequencing, and
+control structures. Only arithmetic expressions are allowed in variable assignments, and only boolean expressions are allowed in the conditions of control
+structures, thus obviating the need for a type system. Finally, we have extended the definition of the language to include basic support for catchable exceptions
+as one of the effects that we wish to formally define for variational execution. \CCkeyw{throw} statements take an arithmetic expression and produce an
+error with the value the expression evaluates to. \CCkeyw{catch} statements allow for the handling of any thrown error values in their main block via a
+handler block.
+
+We now define a formal big-step semantics for this non-variational version of IMP, which we can then use as a point of reference for our variational semantics.
+Figure \ref{fig:impexpr} defines the big-step semantics of arithmetic and boolean expressions. Expressions are evaluated in the context of the current variable
+store and are otherwise very straightforward in their definition. Figure \ref{fig:impstmt} defines the big-step semantics of IMP statements. 
 
 \def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
 
@@ -522,7 +541,7 @@ E &::=& \nothing & \textit{No error} \\
 \BigTry \and
 \BigCatch
 \end{mathpar}
-\caption{Big-step semantics of IMP with Effects statements}
+\caption{Big-step semantics of IMP statements}
 \label{fig:impstmt}
 \end{figure}
 
