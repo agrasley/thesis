@@ -22,6 +22,7 @@
 \usepackage{cc}
 \usepackage{cc-ext}
 \usepackage{alltt}
+\usepackage{textcomp}
                              
 
 %%%
@@ -43,6 +44,22 @@
 \DefineVerbatimEnvironment{hbprogram}{BVerbatim}
    {fontsize=\progfontsize,commandchars=\\\{\},samepage=true}
 \newcommand{\hprog}[1]{\textrm{\progfontsize\texttt{#1}}}
+
+\usepackage{listings}  
+
+\lstset{columns=fullflexible,
+        upquote=true,
+        mathescape=true,
+        literate=
+               {=>}{$\Rightarrow{}$}{1}
+               {.}{$\circ{}\ $}{1}
+               {<*>}{$<\!\!\!\!\!*\!\!\!\!\!>{}$}{1}
+               {>>=}{$>\!\!\!>\!={}$}{1}
+               {->}{$\rightarrow{}$}{1}
+               {<>}{$<\!\!\!\$\!\!\!>{}$}{1}
+               {'}{$^\prime{}$}{1},
+         morekeywords={data,instance,where,type,if,then,else,otherwise}
+        }
 
 
 \def\denseitems{
@@ -145,17 +162,17 @@ equally to embedded representations.
 
 Generic formula trees can be represented by the following Haskell datatypes:
 
-\begin{hprogram}
+\begin{lstlisting}
 type Dim = String
 data Cond =
     Lit Bool
   | Ref Dim
   | Not Cond
-  | And Cond Cond
-  | Or Cond Cond
+  | Cond :&&: Cond
+  | Cond :||: Cond
 
-data V a = One a | Chc Cond (V a) (V a) 
-\end{hprogram}
+data V a = One a | Chc Cond (V a) (V a)
+\end{lstlisting}
 
 The datatype \prog{Cond} represents expressions in our boolean algebra, with dimension names as strings.
 The constructor \prog{One} creates the leaves of a formula tree, while \prog{Chc} creates the nodes.
@@ -164,7 +181,7 @@ This type-generic representation allows us to easily define some useful algebrai
 formula trees via typeclasses. Specifically, formula trees readily support implementation of the
 Functor, Applicative, and Monad typeclasses:
 
-\begin{hprogram}
+\begin{lstlisting}
 instance Functor V where
   fmap f (One a) = One (f a)
   fmap f (Chc d l r) = Chc d (fmap f l) (fmap f r)
@@ -178,7 +195,7 @@ instance Monad V where
   return = One
   (One v) >>= f = f v
   (Chc d l r) >>= f = Chc d (l >>= f) (r >>= f)
-\end{hprogram}
+\end{lstlisting}
 
 Astute readers will note that because formula trees are merely a special class of binary tree with
 labeled nodes they share identical instances. The usefulness of defining these instances will be made
@@ -237,26 +254,26 @@ If we do not have to worry about side effects in our language that we wish to in
 our task is comparatively easy. We begin by considering a simple arithmetic expression language
 defined by the following Haskell datatype:
 
-\begin{hprogram}
+\begin{lstlisting}
 data Arith = N Int | Add Arith Arith | Mul Arith Arith
-\end{hprogram}
+\end{lstlisting}
 
 In the non-variational setting we can easily define an interpreter for this language which produces
 values of type \prog{Int}:
 
-\begin{hprogram}
+\begin{lstlisting}
 eval :: Arith -> Int
 eval (N i) = i
 eval (Add l r) = eval l + eval r
 eval (Mul l r) = eval l * eval r
-\end{hprogram}
+\end{lstlisting}
 
 The process of ``variationalizing" this small example is quite straightforward. First, we add a
 constructor to support choices in our language:
 
-\begin{hprogram}
+\begin{lstlisting}
 data Arith = N Int | Add Arith Arith | Mul Arith Arith | AChc Cond Arith Arith
-\end{hprogram}
+\end{lstlisting}
 
 Next we modify our interpreter. Instead of returning plain values of type \prog{Int},
 we now return \emph{variational} values of type \prog{V Int}. We then take the cases
@@ -265,13 +282,13 @@ applicative functor instance for \prog{V} we defined in Section 2. Finally, we a
 that handles our new \prog{AChc} constructor and we have completed the conversion of our
 interpreter:
 
-\begin{hprogram}
+\begin{lstlisting}
 eval :: Arith -> V Int
 eval (N i) = pure i
-eval (Add l r) = (+) <$> eval l <*> eval r
-eval (Mul l r) = (*) <$> eval l <*> eval r
+eval (Add l r) = (+) <> eval l <*> eval r
+eval (Mul l r) = (*) <> eval l <*> eval r
 eval (AChc d l r) = Chc d (eval l) (eval r)
-\end{hprogram}
+\end{lstlisting}
 
 This basic pattern of variationalizing a language by re-situating the
 plain interpreter within the applicative functor for choices works well for any language that is pure
@@ -452,7 +469,7 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & \CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s & \textit{Conditional} \\
 & | & \CCkeyw{while}\ e\ \CCkeyw{do}\ s & \textit{Looping} \\
 & | & \CCkeyw{throw}\ a & \textit{Throw error} \\
-& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s & \textit{Catch error}
+& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s & \textit{Catch error}
 \end{syntax}
 \caption{Syntax of IMP with Exceptions}
 \label{fig:impsyn}
@@ -464,12 +481,13 @@ made up of literals, negation, conjunction, and less-than comparison of arithmet
 control structures. Only arithmetic expressions are allowed in variable assignments, and only boolean expressions are allowed in the conditions of control
 structures, thus obviating the need for a type system. Finally, we have extended the definition of the language to include basic support for catchable exceptions
 as one of the effects that we wish to formally define for variational execution. \CCkeyw{throw} statements take an arithmetic expression and produce an
-error with the value the expression evaluates to. \CCkeyw{catch} statements allow for the handling of any thrown error values in their main block via a
+error with the value the expression evaluates to. \CCkeyw{try \ldots catch} statements allow for the handling of any thrown error values in their main block via a
 handler block.
 
 We now define a formal big-step semantics for this non-variational version of IMP, which we can then use as a point of reference for our variational semantics.
 Figure \ref{fig:impexpr} defines the big-step semantics of arithmetic and boolean expressions. Expressions are evaluated in the context of the current variable
-store and are otherwise very straightforward in their definition. Figure \ref{fig:impstmt} defines the big-step semantics of IMP statements. 
+store and are otherwise straightforward in their definition. Figure \ref{fig:impstmt} defines the big-step semantics of IMP statements. Statements have two possible
+side effects: updating the variable store or updating the current error context.
 
 \def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
 
@@ -514,8 +532,8 @@ S &::=& S(x) & \textit{Lookup x in S} \\
 \def \BigWhileT {\infer [S-WhileT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S') \\ (E,S',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')} {(\nothing,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')}}
 \def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \CCkeyw{false}} {(E,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E,S)}}
 \def \BigThrow {\infer [S-Throw] {(S,a) \Downarrow_A n} {(\nothing,S,\CCkeyw{throw}\ a) \Downarrow_S (n,S)}}
-\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_S (\nothing,S')}}
-\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_S (E,S''[x \rightarrow S'(x)])}}
+\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (\nothing,S')}}
+\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (E,S'')}}
 
 \begin{figure}
 \begin{syntax}
@@ -548,6 +566,35 @@ E &::=& \nothing & \textit{No error} \\
 
 \section{Variational IMP with Effects}
 
+\subsection{Variational Operations}
+
+In order to successfully relate variational IMP back to its non-variational counterpart
+we must define configuration and selection for VIMP. We assume solving for satisfiability
+as a primitive operation; in practice this can be implemented by offloading these calls to
+a SAT solver. We begin by defining the general case of selection and configuration for choice
+trees and defer discussion of the implementation of these operations for the variational store to its own section.
+
+\begin{lstlisting}
+unsat = not . sat
+taut = unsat . Not
+x => y = taut ((Not x) :||: y)
+
+sel _ (One x) = x
+sel c (Chc c' l r)
+  | c => c' = sel c l
+  | c => (Not c') = sel c r
+  | otherwise = Chc c' (sel c l) (sel c r)
+  
+evalCond ds (Lit b) = b
+evalCond ds (Ref x) = x `elem` ds
+evalCond ds (Not c) = not (evalCond c)
+evalCond ds (And c c') = evalCond c && evalCond c'
+evalCond ds (Or c c') = evalCond c || evalCond c'
+
+conf _ (One x) = x
+conf ds (Chc c l r) = if evalCond ds c then conf ds l else conf ds r
+\end{lstlisting}
+
 \begin{figure}
 \begin{syntax}
 \text{(Boolean literals)} \\
@@ -577,7 +624,7 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & \CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s & \textit{Conditional} \\
 & | & \CCkeyw{while}\ e\ \CCkeyw{do}\ s & \textit{Looping} \\
 & | & \CCkeyw{throw}\ a & \textit{Throw error} \\
-& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s & \textit{Catch error} \\
+& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s & \textit{Catch error} \\
 & | & \tagtree{C}{s}{s} & \textit{Choice}
 \end{syntax}
 \caption{Syntax of Variational IMP with Effects}
@@ -642,8 +689,8 @@ v &::=& b & \textit{Boolean literal} \\
 \def \BigVIf {\infer [VS-If] {(\gc,S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenFalse}(v),S',E') \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_{VS} (S'',E'')}}
 \def \BigVWhile {\infer [VS-While] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenTrue}(v),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
 \def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{l:E},S,a) \Downarrow_{VA} u} {(C,S,l:E,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,u):l):E)}}
-\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S',E)}}
-\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\GetCtx{C}{(l:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{in}\ s') \Downarrow_{VS} (S''[(\CCkeyw{true},x) \rightarrow S'(\CCkeyw{true},x)],E')}}
+\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S',E)}}
+\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\GetCtx{C}{(l:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S'',E')}}
 \def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
 
 \begin{figure}
