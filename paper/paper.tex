@@ -81,8 +81,33 @@
 
 \section{Introduction}
 
-%% TODO
-Variation is a constant element in modern software systems. 
+Variation is an extremely common element in modern software. Variation in software can be
+thought of as broadly belonging to two interrelated categories: software systems and variational execution.
+Variation in software systems is commonly found in preprocessor directives, command line options, or aspect- or feature-oriented
+programming languages (TODO: cite aspect and feature oriented work here).
+These all share the common behavior of taking some set of features as input and
+producing a program or executable uniquely determined by those features as output. Variational execution occurs whenever a single
+program is run multiple times on related inputs. Such serial execution of the same program over different inputs can be viewed in the abstract
+as equivalent to a single execution across a value representing all inputs and producing a similar value representing all outputs.
+The key distinction between these two views of variation is that one takes a set of features and produces programs or executables that
+operate over normal non-variational values, while the other takes a variational set of values and a single program and produces a corresponding variational set of outputs.
+
+While seemingly distinct, there is considerable overlap between these two areas of variation. Tooling or static analysis that deals with
+variation software systems often encounters the same problems and employs the same techniques to solve them
+that are found in variational execution. Chief among these issues is that brute-force techniques for dealing with variation quickly become infeasible as the
+number of features grows. For a variational software system with $n$ features, the number of unique variants produced is $2^n$. Similarly, the naive approach
+of running a program multiple times over varying inputs requires $2^n$ executions for inputs with $n$ features. This exponential growth poses what appears to
+be an insurmountable obstacle to efficiently handling variation in the face of a large number of distinct features.
+
+Of course, the situation is not quite as hopeless as it might first appear. In both variational software systems and variational models of execution
+there are significant elements that are shared in common between variants. In software systems this might take the form of pieces of code such as functions
+or classes that are shared between multiple variants. In the case of variational execution this means computations that are performed across several variants.
+By exploiting these commonalities what previously seemed impossible often becomes quite efficient. Software systems analysis that takes advantage of variation
+in this way---commonly termed \emph{variationally-aware} analysis---has been developed across a number of areas, including typechecking, type inference, and
+testing (TODO: citations). In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
+of languages, including PHP, Java, and Javascript (TODO: citations), including the development of efficient variational data structures to support such execution (TODO: citations).
+
+
 
 \section{Background}
 
