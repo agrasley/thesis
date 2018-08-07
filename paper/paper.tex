@@ -48,6 +48,7 @@
 \usepackage{listings}  
 
 \lstset{columns=fullflexible,
+        basicstyle=\ttfamily,
         upquote=true,
         mathescape=true,
         literate=
@@ -80,6 +81,7 @@
 \maketitle
 
 \section{Introduction}
+\label{ch:intro}
 
 Variation is an extremely common element in modern software. Variation in software can be
 thought of as broadly belonging to two interrelated categories: software systems and variational execution.
@@ -107,9 +109,27 @@ in this way---commonly termed \emph{variationally-aware} analysis---has been dev
 testing (TODO: citations). In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
 of languages, including PHP, Java, and Javascript (TODO: citations), including the development of efficient variational data structures to support such execution (TODO: citations).
 
+The work in this thesis was primarily motivated by our work in defining a DSL for describing resource requirements in complex modern software
+systems. The Resource DSL allows users to write programs that assert certain conditions of a successful resource configuration for a project.
+Resource requirement specifications are an ideal setting for the use of variational execution. For many modern software systems there are a
+whole host of configuration options available. Using a plain, non-variational model of execution a user must individually check each configuration that they wish to
+test. As discussed above, if a user wishes to check an entire configuration it quickly becomes infeasible due to the exponential explosion of the number of times they must
+rerun the checker. By contrast, the Resource DSL due to its fully variational model of execution is capable of exploiting the common computations shared among many different
+possible configurations, leading to efficiency gains. In addition to the potential efficiency gains, directly modeling variation in our language allows for easier reasoning about
+large configuration spaces. For instance, users can easily preconfigure a variational program to only run for certain features that they are interested in. Users can also more easily
+query results across options, making it potentially easier to identify patterns for particular sets of features.
 
+Of course, the design and implementation of the Resource DSL was not without its particular challenges. One particularly interesting and difficult aspect of developing
+the variational interpreter for the Resource DSL was accounting for side effects in a variational setting. The Resource DSL itself is primarily interested in side effects: programs are
+made up primarily of either operations that somehow modify a resource environment or assertions against the current state of that environment. For this reason, the
+Resource DSL is implemented as an imperative language, with side-effectful statements forming the basis of programs in the language. The interactions of side effects
+like mutable state and throwing exceptions with variation proved to be difficult to get right. Previous work on making imperative languages variational has developed a
+number of techniques to handle the interactions between side effects and variation. This thesis seeks to formalize these techniques using a sample big-step operational
+semantics for a simple imperative programming language. With the formal underpinnings thus established, we then turn to a discussion of how they are utilized in more
+full-featured language like our Resource DSL.
 
 \section{Background}
+\label{ch:bg}
 
 \subsection{The choice calculus}
 
@@ -117,9 +137,9 @@ In order to formally represent choices in our programs we employ the choice
 calculus \cite{ericthesis,erwig2011choice}. The fundamental unit of the choice calculus is
 the \emph{choice}, which is a set of values called \emph{alternatives}.
 There are many data structures that can be used to model
-choices, but for our purposes we utilize a data structure we refer
+variational values, but for our purposes we utilize a data structure we refer
 to as a formula tree \cite{walkingshaw2014projectional,walkingshaw2014variational}.
-Formula trees represent the set of alternatives as a binary tree, with concrete
+Formula trees represent the set of alternatives as a tree of choices, with concrete
 values at the leaves of the tree. Each node of the tree is tagged with a formula from a boolean
 algebra consisting of boolean literals, variables, negation, conjunction, and disjunction. We call individual
 boolean variables the \emph{dimensions} of the choices, while the expressions as a whole we call \emph{conditions}. Notationally we represent these choice trees
@@ -141,7 +161,7 @@ the truth of the condition. Similarly, if the selector logically implies the fal
 and replace it with the right branch. If neither implication is valid, the choice remains untouched with
 both alternatives left intact.
 
-It is often helpful to see this selection operation in action. The operation
+It is helpful to see this selection operation in action. The operation
 $\mathit{sel}(A,\tagtree{A}{1}{2})$, can be seen as encoding the presence of feature $A$, which
 will therefore produce the value $1$ as a result. Similarly, $\mathit{sel}(\neg A,\tagtree{A}{1}{2})$ can be seen as encoding the absence of feature $A$ and will
 produce the value $2$. $\mathit{sel}(B,\tagtree{A}{1}{2})$ will result in an unchanged variational
@@ -229,8 +249,8 @@ apparent further on in this work during the discussion of pure, side-effect free
 \subsection{Properties of choices}
 
 % sharing is desirable. what is sharing?
-The choice calculus gives us several desirable properties for variational programs.
-The first is \emph{sharing}. A naive approach to executing a variational program is simply to
+The choice calculus enables several desirable properties for variational programs.
+The first property that is possible to implement through the choice calculus \emph{sharing}. A naive approach to executing a variational program is simply to
 configure the variational program in order to produce each variant and run them all sequentially.
 For a program with $n$ dimensions this results in $2^n$ variants that must be executed. Crucially,
 the naive approach must recompute any common elements shared between variants. Embedding
@@ -267,6 +287,7 @@ and the function itself. This can be visualized as the following commuting diagr
 \end{center}
 
 \section{Motivation}
+\label{ch:mot}
 
 In order to take advantage of the benefits of sharing provided by choices, we must develop variational
 models of execution for a given language. We begin by showing that defining variational execution in a pure,
@@ -496,7 +517,7 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & \CCkeyw{throw}\ a & \textit{Throw error} \\
 & | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s & \textit{Catch error}
 \end{syntax}
-\caption{Syntax of IMP with Exceptions}
+\caption{Syntax of IMP with exceptions}
 \label{fig:impsyn}
 \end{figure}
 
@@ -509,10 +530,11 @@ as one of the effects that we wish to formally define for variational execution.
 error with the value the expression evaluates to. \CCkeyw{try \ldots catch} statements allow for the handling of any thrown error values in their main block via a
 handler block.
 
-We now define a formal big-step semantics for this non-variational version of IMP, which we can then use as a point of reference for our variational semantics.
+We define a formal big-step semantics for this non-variational version of IMP, which we can then use as a point of reference for our variational semantics.
 Figure \ref{fig:impexpr} defines the big-step semantics of arithmetic and boolean expressions. Expressions are evaluated in the context of the current variable
 store and are otherwise straightforward in their definition. Figure \ref{fig:impstmt} defines the big-step semantics of IMP statements. Statements have two possible
-side effects: updating the variable store or updating the current error context.
+side effects: updating the variable store or updating the current error context. In practice the variable store can be simply implemented as a map data structure, while
+the error context is an optional integer value indicating the current error code.
 
 \def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
 
@@ -591,34 +613,11 @@ E &::=& \nothing & \textit{No error} \\
 
 \section{Variational IMP with Effects}
 
-\subsection{Variational Operations}
-
-In order to successfully relate variational IMP back to its non-variational counterpart
-we must define configuration and selection for VIMP. We assume solving for satisfiability
-as a primitive operation; in practice this can be implemented by offloading these calls to
-a SAT solver. We begin by defining the general case of selection and configuration for choice
-trees and defer discussion of the implementation of these operations for the variational store to its own section.
-
-\begin{lstlisting}
-unsat = not . sat
-taut = unsat . Not
-x => y = taut ((Not x) :||: y)
-
-sel _ (One x) = x
-sel c (Chc c' l r)
-  | c => c' = sel c l
-  | c => (Not c') = sel c r
-  | otherwise = Chc c' (sel c l) (sel c r)
-  
-evalCond ds (Lit b) = b
-evalCond ds (Ref x) = x `elem` ds
-evalCond ds (Not c) = not (evalCond c)
-evalCond ds (And c c') = evalCond c && evalCond c'
-evalCond ds (Or c c') = evalCond c || evalCond c'
-
-conf _ (One x) = x
-conf ds (Chc c l r) = if evalCond ds c then conf ds l else conf ds r
-\end{lstlisting}
+Having established the syntax and semantics of plain IMP, we now turn to the definition of Variational IMP (or VIMP for short).
+Figure \ref{fig:vimpsyn} defines the syntax of VIMP. The syntax remains largely the same, with the only difference being the
+addition of choices into each language construct. We opted for embedding choices directly into all of IMP's language constructs rather than using
+a generic formula tree implementation. While the end result should not depend on whether a generic or embedded implementation of choices is
+used, we felt that directly embedding choices led to cleaner semantic definitions.
 
 \begin{figure}
 \begin{syntax}
@@ -652,9 +651,80 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 & | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s & \textit{Catch error} \\
 & | & \tagtree{C}{s}{s} & \textit{Choice}
 \end{syntax}
-\caption{Syntax of Variational IMP with Effects}
+\caption{Syntax of Variational IMP}
 \label{fig:vimpsyn}
 \end{figure}
+
+
+\subsection{Variational Operations}
+
+In order to successfully relate variational IMP back to its non-variational counterpart
+we must define configuration and selection for VIMP. We assume solving for satisfiability
+as a primitive operation; in practice this can be implemented by offloading these calls to
+a SAT solver. We begin by defining the general case of selection and configuration for choice
+trees and defer discussion of the implementation of these operations for the variational store to its own section.
+
+\begin{figure}
+\begin{lstlisting}
+unsat = not . sat
+taut = unsat . Not
+x => y = taut ((Not x) :||: y)
+
+sel :: Cond -> V a -> V a
+sel _ (One x) = One x
+sel c (Chc c' l r)
+  | c => c' = sel c l
+  | c => (Not c') = sel c r
+  | otherwise = Chc c' (sel c l) (sel c r)
+  
+evalCond :: [Dim] -> Cond -> Bool
+evalCond ds (Lit b) = b
+evalCond ds (Ref x) = x `elem` ds
+evalCond ds (Not c) = not (evalCond c)
+evalCond ds (And c c') = evalCond c && evalCond c'
+evalCond ds (Or c c') = evalCond c || evalCond c'
+
+conf :: [Dim] -> V a -> a
+conf _ (One x) = x
+conf ds (Chc c l r) = if evalCond ds c then conf ds l else conf ds r
+\end{lstlisting}
+\caption{Variational operations for VIMP}
+\label{fig:varops}
+\end{figure}
+
+Figure \ref{fig:varops} shows the implementation of the selection and configuration options for generic formula trees
+as defined in Chapter \ref{ch:bg}, using Haskell as a metalanguage. We show the implementation for generic formula trees
+here, with the understanding that it is trivially extended to VIMP's use of choices directly embedded into the syntax of the language.
+We begin by defining some useful utility functions when dealing with satisfiability, particularly the ability to express logical implication.
+The selection function \emph{sel} takes a condition and a variational value. If the variational value is a choice, \emph{sel} checks to see
+if the supplied condition implies that the condition of the choice is either true or false, returning the selected left or right alternative, respectively.
+If the provided condition does not necessarily imply either the truth or falsehood of the choice's condition, then both alternatives are selected on
+and maintained as a choice.
+
+The configuration function \emph{conf} takes a list representing a set of dimensions and a variational value as its arguments. These dimensions can be viewed as
+features that are ``turned on" and should therefore evaluate to \prog{True}, with all other dimensions evaluating to \prog{False}. Put another way, the configuration
+function requires a variable assignment for all of the dimensions in a configuration space in order to evaluate all conditions. With this assignment, configuration
+is a straightforward task of evaluating each choice's condition and selecting either the left or right alternative depending on if it evaluates to \prog{True} or \prog{False}, respectively,
+under that particular assignment.
+
+\subsection{Variational Context and Variational Store}
+
+When describing the issues involved in the interaction between mutable state and variation in Chapter \ref{ch:mot}, we noted the need for (1) maintaining a variational context
+during execution and (2) using this variational context when interacting with the variable store. This is a solution first discovered by \cite{varwhile} in their work on a
+variational model of execution for the While language.
+
+Maintaining the variational context is fairly straightforward. During execution of a variational program, whenever a choice is encountered, the execution splits into
+two separate paths corresponding to each alternative. First, the interpreter must check whether a particular alternative is even possible given the current variational
+context. If the current context is represented by the condition $\neg A$, then for a given choice $\tagtree{A}{l}{r}$, there is no need to evaluate the left alternative, as that
+configuration is impossible and can be automatically ruled out. Therefore, for a given variational context $C$ and a choice with condition $C'$, the interpreter checks
+whether $C \wedge C'$ and $C \wedge \neg C'$ are satisfiable, only then proceeding to execute the left and right alternatives, respectively.
+
+In the case that a context and a choice's condition are satisfiable, the execution then proceeds by extending the current variational context for each alternative.
+For variational context $C$ and a choice with condition $C'$, the left alternative should be evaluated with the context $C \wedge C'$ and the right alternative with
+$C \wedge \neg C'$.
+
+
+
 
 \def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
 \def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
