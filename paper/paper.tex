@@ -1035,6 +1035,51 @@ data Stmt
      | Load (V Expr) [V Expr]
 \end{program}
 
+\chapter{Related Work}
+\label{ch:rw}
+
+As discussed at various points in this thesis, the formal semantics we have developed for variational imperative languages
+is in part a synthesis of existing techniques developed for existing variational interpreters. The present work builds upon this
+by bringing all of these techniques together and providing a formal semantics for reasoning about them. It also demonstrates
+how to support catchable exceptions in a variational environment, which to our knowledge is absent from previous work.
+In this chapter we compare our work to preceding work on variational execution, highlighting the development and implementation
+of several techniques utilized here.
+
+ K\"astner et al. \cite{varwhile} developed a proof-of-concept variational interpreter for the \textsc{While} language. This works shares a
+ significant amount in common with our work on IMP, as both utilize toy imperative languages to develop a theory of variational execution
+ with side effects. This work originated the concepts of maintaining a variational context during execution, defining a variational store as
+ a variational map with lookup and update operations that take the variational context as an argument, and the use of the $\mathit{whenTrue}()$
+ helper function in conjunction with control structures. However, the variational \textsc{While} language only supports a single type of side
+ effect---mutable state---and therefore is incapable of analyzing the interactions between multiple different types of effects and variation.
+ Additionally, the evaluation of the language is only presented as Scala functions rather than a formal big-step semantics.
+ 
+ Around the same time, Kim, Khurshid, and Batory developed \emph{shared execution} for testing software product lines \cite{sharedexec}.
+ Shared execution primarily focuses on low-level support for variation at the level of a language VM.
+ Unlike the variational \textsc{While} language, shared execution is not built on the formal foundation of the choice calculus, and thus its
+ support for variation is handled on a more ad-hoc case-by-case basis, in particular in its merging of shared contexts. Nevertheless,
+ shared execution does contain an analogue of the variational context with variational store pattern for dealing with variational mutable state.
+ 
+ Another seemingly independent development of variational execution was Austin and Flanagan's \emph{faceted evaluation} for Javascript \cite{faceted}.
+ In this case, choices, or \emph{facets} as they are termed by Austin and Flanagan, represent desirable security properties of Javascript, where
+ private data lows correspond to the right alternative and public dataflows correspond to the left alternative.
+ Again, this work contains an analogue of the variational context with variational store pattern, in this case referring to the variational context as
+ the \emph{program counter}. Faceted evaluation only allows dimensions as tags for its choices, rather than arbitrary boolean expressions, which
+ decreases the expressiveness of the language but obviates the need for satisfiability checking. Faceted evaluation additionally provides a formal
+ semantics for a language they call $\lambda^{\mathit{facet}}$. It is also the only approach that attempts to provide a mechanism for variational IO
+ side effects such as interacting with the file system. However, in comparison with the other approaches to variational execution presented here,
+ faceted evaluation is primarily concerned with dataflow security and not with developing general models of variational programming.
+ 
+ Building on the above work with the \textsc{While} language, Nguyen, K\"astner, and Nguyen developed the Varex interpreter for a subset of PHP \cite{varex}.
+ Varex successfully demonstrated the ability to test plugin interactions in the highly configurable WordPress application. Varex adds support for throwing
+ exceptions, but they are not catchable. Varex's exceptions are also reported directly when encountered as a side effect of execution, rather than producing
+ a variational error value as the result of execution. Nevertheless, Varex demonstrates the utility of developing a variational interpreter for a subset of an
+ existing language.
+ 
+  
+
+\chapter{Conclusion and Future Work}
+\label{ch:conc}
+
 
 \bibliographystyle{plain}
 \bibliography{paper}
