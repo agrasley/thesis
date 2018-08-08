@@ -1,8 +1,5 @@
-\documentclass[letterpaper,10pt,onecolumn]{article}
+\documentclass[onehalf,11pt]{beavtex}
 
-\usepackage{setspace} 
-\singlespacing
-\usepackage{graphicx}                                        
 \usepackage{amssymb}                                         
 \usepackage{amsmath}                                         
 \usepackage{amsthm}
@@ -23,19 +20,6 @@
 \usepackage{cc-ext}
 \usepackage{alltt}
 \usepackage{textcomp}
-                             
-
-%%%
-%%% Formatting details
-%%%
-\sloppy
-\sloppypar
-\widowpenalty=0
-\clubpenalty=0
-\displaywidowpenalty=0
-\raggedbottom
-\pagestyle{plain}
-
 
 % define Haskell verbatim environments
 \DefineVerbatimEnvironment{hprogram}{Verbatim}
@@ -44,8 +28,6 @@
 \DefineVerbatimEnvironment{hbprogram}{BVerbatim}
    {fontsize=\progfontsize,commandchars=\\\{\},samepage=true}
 \newcommand{\hprog}[1]{\textrm{\progfontsize\texttt{#1}}}
-
-\usepackage{listings}  
 
 \lstset{columns=fullflexible,
         basicstyle=\ttfamily,
@@ -70,17 +52,49 @@
 
 \newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
 
-\usepackage{geometry}
-\geometry{textheight=9.5in, textwidth=7in}
-\parindent = 0.0 in
-\parskip = 0.1 in
 \title{Imperative Programming with Variational Effects}
 \author{Alex Grasley}
+\degree{Master of Science}
+\doctype{Thesis}
+\department{Electrical Engineering and Computer Science}
+\depttype{School}
+\depthead{Director}
+\major{Computer Science}
+\advisor{Eric Walkingshaw}
+\submitdate{August 27, 2018}
+\commencementyear{2018}
+\abstract{
+Variation is a commonly encountered element of modern software systems.
+One area in which variation is frequently encountered is in defining
+configurations and resource requirements for the deployment of such
+systems. To this end, we have developed the Resource DSL, a language that aids in the specification
+of resource requirements for highly configurable software systems.
+In the Resource DSL,
+variation is a first-class language construct.
+This permits the efficient checking of many possible configurations against
+a set of resource requirements.
+
+During development of the Resource DSL, we encountered a number of
+difficulties in the interaction of variation and side effects. Previous variational
+languages have encountered similar issues and have developed a range of
+techniques to address them. This thesis builds upon this work
+and provides a formal operational semantics for a simple imperative language
+that includes both variation and side effects. After presenting this formalization,
+we demonstrate how it is successfully applied in our work on the Resource DSL.
+}
+\acknowledgements{
+TODO
+}
+
+
+
 \begin{document}
 
 \maketitle
 
-\section{Introduction}
+\mainmatter
+
+\chapter{Introduction}
 \label{ch:intro}
 
 Variation is an extremely common element in modern software. Variation in software can be
@@ -128,10 +142,10 @@ number of techniques to handle the interactions between side effects and variati
 semantics for a simple imperative programming language. With the formal underpinnings thus established, we then turn to a discussion of how they are utilized in more
 full-featured language like our Resource DSL.
 
-\section{Background}
+\chapter{Background}
 \label{ch:bg}
 
-\subsection{The choice calculus}
+\section{The choice calculus}
 
 In order to formally represent choices in our programs we employ the choice
 calculus \cite{ericthesis,erwig2011choice}. The fundamental unit of the choice calculus is
@@ -196,7 +210,7 @@ satisfiability problems into many common operations, which is an NP-complete pro
 efficiency of modern SAT solvers, often the worst-case NP-complete performance of these satisfiability
 problems can be avoided.
 
-\subsection{Implementation of Formula Trees}
+\section{Implementation of Formula Trees}
 
 When integrating formula trees into an existing non-variational language we can choose to
 either embed choices directly into the abstract syntax of the host language or utilize a type-generic
@@ -246,7 +260,7 @@ Astute readers will note that because formula trees are merely a special class o
 labeled nodes they share identical instances. The usefulness of defining these instances will be made
 apparent further on in this work during the discussion of pure, side-effect free variational languages.
 
-\subsection{Properties of choices}
+\section{Properties of choices}
 
 % sharing is desirable. what is sharing?
 The choice calculus enables several desirable properties for variational programs.
@@ -286,7 +300,7 @@ and the function itself. This can be visualized as the following commuting diagr
 \end{tikzpicture}
 \end{center}
 
-\section{Motivation}
+\chapter{Motivation}
 \label{ch:mot}
 
 In order to take advantage of the benefits of sharing provided by choices, we must develop variational
@@ -294,7 +308,7 @@ models of execution for a given language. We begin by showing that defining vari
 side-effect free evaluation context is a fairly straight-forward exercise before turning to the much more
 difficult problem of variational execution with side effects.
 
-\subsection{Pure variational execution}
+\section{Pure variational execution}
 
 If we do not have to worry about side effects in our language that we wish to introduce variation to then
 our task is comparatively easy. We begin by considering a simple arithmetic expression language
@@ -352,7 +366,7 @@ demonstrate that the presence of side-effectful statements, control flow structu
 commonly encountered in imperative programming languages requires more than the approach based
 on applicative functors as we have outlined here.
 
-\subsection{Mutable State}
+\section{Mutable State}
 
 To demonstrate why imperative programming with side effects requires us to rethink how we
 variationalize a language and its execution, we turn to a small example in a simple imperative
@@ -426,7 +440,7 @@ trying to introduce choices to languages with side effects.
 %evalBlock b s = foldl (flip evalStmt) s b
 %\end{program}
 
-\subsection{Exceptions}
+\section{Exceptions}
 
 Exceptions are another common type of effect that proves challenging in a variational setting.
 Consider the following program:
@@ -472,7 +486,7 @@ In the non-variational context we have no need to store and remember error value
 because we simply return the error value immediately when it is thrown. In the variational context, we
 must now store these values while we continue to evaluate variants that are not in an error state.
 
-\subsection{Comparison with Existing Work}
+\section{Comparison with Existing Work}
 
 At this point, it should be apparent that introducing choices into a side-effectful imperative language
 is anything but straightforward. The issues described above have been encountered repeatedly in efforts to
@@ -486,7 +500,8 @@ above languages by providing a formal operational semantics for the IMP language
 language. It is our hope that a formal operational semantics for a simple imperative language will allow for easy application
 and extension to variational imperative languages of differing levels of complexity.
 
-\section{IMP}
+\chapter{IMP}
+\label{ch:imp}
 
 The IMP language is a simple but Turing-complete imperative programming language \cite{winskel1993formal,nipkow1998winskel,nipkow2014concrete}.
 In our case, IMP's relative simplicity allows for straightforward extension to support exceptions as well as variational execution. IMP also lacks elements such
@@ -611,7 +626,8 @@ E &::=& \nothing & \textit{No error} \\
 \end{figure}
 
 
-\section{Variational IMP with Effects}
+\chapter{Variational IMP}
+\label{ch:vimp}
 
 Having established the syntax and semantics of plain IMP, we now turn to the definition of Variational IMP (or VIMP for short).
 Figure \ref{fig:vimpsyn} defines the syntax of VIMP. The syntax remains largely the same, with the only difference being the
@@ -656,7 +672,7 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 \end{figure}
 
 
-\subsection{Variational Operations}
+\section{Variational Operations}
 
 In order to successfully relate variational IMP back to its non-variational counterpart
 we must define configuration and selection for VIMP. We assume solving for satisfiability
@@ -707,7 +723,7 @@ function requires a variable assignment for all of the dimensions in a configura
 is a straightforward task of evaluating each choice's condition and selecting either the left or right alternative depending on if it evaluates to \prog{True} or \prog{False}, respectively,
 under that particular assignment.
 
-\subsection{Variational Context and Variational Store}
+\section{Variational Context and Variational Store}
 
 When describing the issues involved in the interaction between mutable state and variation in Chapter \ref{ch:mot}, we noted the need for (1) maintaining a variational context
 during execution and (2) using this variational context when interacting with the variable store. This is a solution first discovered by \cite{varwhile} in their work on a
@@ -831,7 +847,8 @@ E &::=& [] & \textit{Nil} \\
 & \mathit{ctx}(C,((C',n):xs):ys) & = &\ \mathit{ctx}(C \wedge \neg C',xs:ys)
 \end{flalign*}
 
-\section{The Resource DSL}
+\chapter{The Resource DSL}
+\label{ch:rdsl}
 
 The work on variational imperative programming we have described up to this point was motivated
 by our experience developing the Resource DSL. The Resource DSL is designed with the intent of
@@ -846,7 +863,7 @@ systems with large feature sets. In this section we describe the design and impl
 Resource DSL including several case studies of its use. In particular we pay special attention to the
 practical concerns brought on by integrating choices into an imperative language.
 
-\subsection{Resources}
+\section{Resources}
 
 In our language a resource is represented by a distinct primitive value. These primitive values
 can be either booleans, integers, floating point numbers, strings, or the unit value, as defined
@@ -892,7 +909,7 @@ vlookup vctx k env = case (lookup k env) of
     Just v -> sel vctx v  -- sel is the standard selection operation for formula trees
 \end{program}
 
-\subsection{Expressions}
+\section{Expressions}
 
 Of course, primitive resource values are of little use without ways of manipulating them. To this end the Resource DSL supports
 a number of common operations over primitive values in the form of a simple expression language. Expressions are formed by
@@ -922,7 +939,7 @@ data Param = Param Var (V PType)
 data Fun = Fun Param (V Expr)
 \end{program}
 
-\subsection{Effects on Resources}
+\section{Effects on Resources}
 
 Having established the representation of resources in our DSL as well as their manipulation via expressions and unary functions,
 we now turn to defining effects on the global resource environment.
@@ -942,7 +959,7 @@ data Effect
      | Delete
 \end{program}
 
-\subsection{Statements}
+\section{Statements}
 
 Statements are used in order to sequence and combine the above effects into programs in the Resource DSL.
 The most basic statement is the \prog{Do} command, which takes a path to a resource and applies an effect to that
@@ -978,19 +995,6 @@ data Stmt
 
 \bibliographystyle{plain}
 \bibliography{paper}
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 \end{document}
