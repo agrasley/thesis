@@ -59,6 +59,7 @@
                {>>=}{$>\!\!\!>\!={}$}{1}
                {->}{$\rightarrow{}$}{1}
                {<>}{$<\!\!\!\$\!\!\!>{}$}{1}
+               {~}{$\${}\ $}{1}
                {'}{$^\prime{}$}{1},
          morekeywords={data,instance,where,type,if,then,else,otherwise}
         }
@@ -160,30 +161,33 @@ TODO: grant
 \label{ch:intro}
 
 Variation is an extremely common element in modern software. Variation in software can be
-thought of as broadly belonging to two interrelated categories: software systems and variational execution.
-Variation in software systems is commonly found in preprocessor directives, command line options, or aspect- or feature-oriented
-programming languages (TODO: cite aspect and feature oriented work here).
+thought of as broadly belonging to several interrelated categories: variation that is resolved statically, variation that is preserved during analysis,
+and variation that is present during execution.
+Variation that is resolved staticially is commonly found in preprocessor directives, command line options, or aspect- or feature-oriented
+programming languages \cite{apel2008feature,kiczales1997aspect,prehofer1997feature}.
 These all share the common behavior of taking some set of features as input and
-producing a program or executable uniquely determined by those features as output. Variational execution occurs whenever a single
-program is run multiple times on related inputs. Such serial execution of the same program over different inputs can be viewed in the abstract
+producing a program or executable uniquely determined by those features as output. Variational analysis seeks to preserve this variation during program analysis.
+For example, the Typechef tool preserves the variation present in C preprocessor annotations in order to typecheck massively variational codebases such as
+the Linux kernel \cite{kenner2010typechef}.
+Variational that is preserved at runtime, or variational execution, occurs whenever a single
+program is run multiple times on related inputs, but may also be viewed as running a program with static variation without eliminating that variation first.
+Serial execution of the same program over different inputs can be viewed in the abstract
 as equivalent to a single execution across a value representing all inputs and producing a similar value representing all outputs.
-The key distinction between these two views of variation is that one takes a set of features and produces programs or executables that
-operate over normal non-variational values, while the other takes a variational set of values and a single program and produces a corresponding variational set of outputs.
 
-While seemingly distinct, there is considerable overlap between these two areas of variation. Tooling or static analysis that deals with
-variation software systems often encounters the same problems and employs the same techniques to solve them
+While seemingly distinct, there is considerable overlap between these kinds of variation. Tooling or static analysis that deals with
+statically resolved variation often encounters the same problems and employs the same techniques to solve them
 that are found in variational execution. Chief among these issues is that brute-force techniques for dealing with variation quickly become infeasible as the
 number of features grows. For a variational software system with $n$ features, the number of unique variants produced is $2^n$. Similarly, the naive approach
 of running a program multiple times over varying inputs requires $2^n$ executions for inputs with $n$ features. This exponential growth poses what appears to
 be an insurmountable obstacle to efficiently handling variation in the face of a large number of distinct features.
 
-Of course, the situation is not quite as hopeless as it might first appear. In both variational software systems and variational models of execution
-there are significant elements that are shared in common between variants. In software systems this might take the form of pieces of code such as functions
-or classes that are shared between multiple variants. In the case of variational execution this means computations that are performed across several variants.
+Of course, the situation is not quite as hopeless as it might first appear. In all these types of variation
+there are significant elements that are shared in common between variants. In statically resolved variation this might take the form of pieces of code such as functions
+or classes that are shared between multiple variants. When analyzing such programs, significant portions of the analysis will be shared across many variants. In the case of variational execution often computations are performed across several variants.
 By exploiting these commonalities what previously seemed impossible often becomes quite efficient. Software systems analysis that takes advantage of variation
 in this way---commonly termed \emph{variationally-aware} analysis---has been developed across a number of areas, including typechecking, type inference, and
-testing (TODO: citations). In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
-of languages, including PHP, Java, and Javascript (TODO: citations), including the development of efficient variational data structures to support such execution (TODO: citations).
+testing \cite{kenner2010typechef,chen2014extending,thum2014classification}. In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
+of languages, including PHP, Java, and Javascript \cite{varex,varexj,facted}.
 
 The work in this thesis was primarily motivated by our work in defining a DSL for describing resource requirements in complex modern software
 systems. The Resource DSL allows users to write programs that assert certain conditions of a successful resource configuration for a project.
@@ -203,6 +207,51 @@ like mutable state and throwing exceptions with variation proved to be difficult
 number of techniques to handle the interactions between side effects and variation. This thesis seeks to formalize these techniques using a sample big-step operational
 semantics for a simple imperative programming language. With the formal underpinnings thus established, we then turn to a discussion of how they are utilized in more
 full-featured language like our Resource DSL.
+
+\section{Contributions and Outline}
+
+This thesis provides two primary contributions: (1) a formal semantics for variational imperative languages
+and (2) a description of our design of the Resource DSL. These are of course intrinsically linked, where
+the work on formalizing the semantics of variational imperative languages serves as the foundation for
+a specific variational imperative language, namely the Resource DSL.
+
+Chapter 2 (\emph{Background}) provides an overview of the choice calculus, which provides a formal
+model for reasoning about variation. It describes one way of implementing variational values in the
+choice calculus via formula trees. Finally, several desirable properties that are enabled by or
+crucial to the choice calculus are discussed.
+
+Chapter 3 (\emph{Motivation}) establishes the motivation for our work on formalizing
+the semantics of variational imperative languages. We first establish
+a baseline by describing the typical process of incorporating variation into
+a language without side effects. Then we show why this approach is inadequate
+for dealing with imperative languages with side effects. We examine how both
+mutable state and exceptions can pose problems in a variational setting.
+
+Chapter 4 (\emph{IMP}) describes the imperative language IMP.
+We use IMP because its simplicity allows for the definition of the key
+interaction between variation and side effects without unnecessary linguistic
+clutter. We set out the syntax of IMP which we have extended to include catchable
+exceptions, as well as a big-step operational semantics for IMP. This allows us
+to have a useful point of comparison for our later work on variationalizing IMP.
+
+Chapter 5 (\emph{Variational IMP}) describes the process of adding explicit support
+for variation to the IMP language. We extend the syntax with choices, and then
+develop the necessary elements in order to define a big-step operational semantics.
+These elements include maintaining a variational context, a variational variable store,
+an error context, and special interactions with control structures. With these established
+we define the formal semantics of Variational IMP.
+
+Chapter 6 (\emph{The Resource DSL}) describes our work on developing a variational
+language for checking resource configurations. TODO: flesh this out a big more.
+
+Chapter 7 (\emph{Related Work}) provides an overview of existing approaches to
+variational imperative programming, and compares our contributions with the prior
+state of the art.
+
+Finally, Chapter 8 (\emph{Conclusion and Future Work}) discusses possible applications
+of our research on variational imperative programming and the Resource DSL. We discuss
+possible future areas of research that build on the contributions presented here.
+
 
 \chapter{Background}
 \label{ch:bg}
@@ -434,6 +483,7 @@ commonly encountered in imperative programming languages requires more than the 
 on applicative functors as we have outlined here.
 
 \section{Mutable State}
+\label{sec:mutst}
 
 To demonstrate why imperative programming with side effects requires us to rethink how we
 variationalize a language and its execution, we turn to a small example in a simple imperative
@@ -698,7 +748,7 @@ E &::=& \nothing & \textit{No error} \\
 
 Having established the syntax and semantics of plain IMP, we now turn to the definition of Variational IMP (or VIMP for short).
 Figure \ref{fig:vimpsyn} defines the syntax of VIMP. The syntax remains largely the same, with the only difference being the
-addition of choices into each language construct. We opted for embedding choices directly into all of IMP's language constructs rather than using
+addition of choices into the expressions and statements of the language. We opted for embedding choices directly into all of IMP's language constructs rather than using
 a generic formula tree implementation. While the end result should not depend on whether a generic or embedded implementation of choices is
 used, we felt that directly embedding choices led to cleaner semantic definitions.
 
@@ -744,8 +794,7 @@ s &::=& \CCkeyw{skip} & \textit{Noop} \\
 In order to successfully relate variational IMP back to its non-variational counterpart
 we must define configuration and selection for VIMP. We assume solving for satisfiability
 as a primitive operation; in practice this can be implemented by offloading these calls to
-a SAT solver. We begin by defining the general case of selection and configuration for choice
-trees and defer discussion of the implementation of these operations for the variational store to its own section.
+a SAT solver.
 
 \begin{figure}
 \begin{lstlisting}
@@ -779,26 +828,27 @@ Figure \ref{fig:varops} shows the implementation of the selection and configurat
 as defined in Chapter \ref{ch:bg}, using Haskell as a metalanguage. We show the implementation for generic formula trees
 here, with the understanding that it is trivially extended to VIMP's use of choices directly embedded into the syntax of the language.
 We begin by defining some useful utility functions when dealing with satisfiability, particularly the ability to express logical implication.
+
 The selection function \emph{sel} takes a condition and a variational value. If the variational value is a choice, \emph{sel} checks to see
-if the supplied condition implies that the condition of the choice is either true or false, returning the selected left or right alternative, respectively.
+if the supplied condition implies that the condition of the choice is either true or false, returning the recursively selected left or right alternative, respectively.
 If the provided condition does not necessarily imply either the truth or falsehood of the choice's condition, then both alternatives are selected on
-and maintained as a choice.
+and maintained as a choice with the original condition.
 
 The configuration function \emph{conf} takes a list representing a set of dimensions and a variational value as its arguments. These dimensions can be viewed as
 features that are ``turned on" and should therefore evaluate to \prog{True}, with all other dimensions evaluating to \prog{False}. Put another way, the configuration
 function requires a variable assignment for all of the dimensions in a configuration space in order to evaluate all conditions. With this assignment, configuration
-is a straightforward task of evaluating each choice's condition and selecting either the left or right alternative depending on if it evaluates to \prog{True} or \prog{False}, respectively,
-under that particular assignment.
+is a straightforward task of evaluating each choice's condition and selecting either the left or right alternative depending on if it evaluates to \prog{True} or \prog{False}, respectively.
 
 \section{Variational Context and Variational Store}
 
 When describing the issues involved in the interaction between mutable state and variation in Chapter \ref{ch:mot}, we noted the need for (1) maintaining a variational context
 during execution and (2) using this variational context when interacting with the variable store. This is a solution first discovered by \cite{varwhile} in their work on a
-variational model of execution for the While language.
+variational model of execution for the \textsc{While} language.
 
 Maintaining the variational context is fairly straightforward. During execution of a variational program, whenever a choice is encountered, the execution splits into
 two separate paths corresponding to each alternative. First, the interpreter must check whether a particular alternative is even possible given the current variational
-context. If the current context is represented by the condition $\neg A$, then for a given choice $\tagtree{A}{l}{r}$, there is no need to evaluate the left alternative, as that
+context. For example, if the current context is the condition $\neg A$, then for a given choice $\tagtree{A}{l}{r}$, there is no need to evaluate the left alternative, as the current
+variational context implies that
 configuration is impossible and can be automatically ruled out. Therefore, for a given variational context $C$ and a choice with condition $C'$, the interpreter checks
 whether $C \wedge C'$ and $C \wedge \neg C'$ are satisfiable, only then proceeding to execute the left and right alternatives, respectively.
 
@@ -806,8 +856,58 @@ In the case that a context and a choice's condition are satisfiable, the executi
 For variational context $C$ and a choice with condition $C'$, the left alternative should be evaluated with the context $C \wedge C'$ and the right alternative with
 $C \wedge \neg C'$.
 
+With the variational context established, we can move on to the definition of the variational variable store. A non-variational store is a data structure
+that supports a lookup operation of type \prog{lookup :: Var $\rightarrow$ Store $\rightarrow$ Value}, and update of type \prog{update :: Var $\rightarrow$ Value $\rightarrow$ Store $\rightarrow$ Store}.
+A variational store is a data structure that supports a lookup operation of type \prog{vlookup :: Cond $\rightarrow$ Var $\rightarrow$ VStore $\rightarrow$ V Value} and update of type
+\prog{vupdate :: Cond $\rightarrow$ Var $\rightarrow$ V Value $\rightarrow$ VStore $\rightarrow$ VStore}. In essence, a variational store takes the current variational context as an
+additional argument to all of its operations, which now operate on variational values rather than plain values. Taking the current variational context as an argument to all
+operations is necessary in order to avoid situations like those described in Section \ref{sec:mutst}, where a block is conditionally
+evaluated only in some variants but not others. This information can now be safely carried by the variational context and passed
+to the variational store when required.
 
+We now provide a sample implementation of a variational store based on the variational map data structure \cite{varwhile, walkingshaw2014variational}.
+Variational maps are an efficient map data structure for storing variational values and are easily built using an existing non-variational map. The basic idea
+is that for a non-variational map of with values of type \prog{v}, a variational map uses the same underlying data structure but with values of type \prog{V (Maybe v)}.
+The variational values in the map must be of type \prog{Maybe v} in order to account for cases where a value is assigned in one variant but not in others.
 
+\begin{figure}
+\begin{lstlisting}
+type VOpt v = V (Maybe v)
+type VStore v = Map Var (VOpt v)
+
+assertExists :: VOpt v -> V v
+assertExists (One Nothing) = error "trying to access an undefined variable"
+assertExists (One (Just v)) = One v
+assertExists (Chc c l r) = Chc c (assertExists l) (assertExists r)
+
+vlookup :: Cond -> Var -> VStore v -> V v
+vlookup c k vst = assertExists ~ sel c (lookup' k vst)
+  where
+    lookup' k m = case lookup k m of
+      Just v -> v
+      Nothing -> error "trying to access an undefined variable"
+
+vmerge :: VOpt v -> Cond -> VOpt v -> -> VOpt v
+vmerge (One v) vctx v' = Chc vctx v' (One v)
+vmerge v@(Chc c l r) vctx v'@(One _)
+  | c => vctx = Chc vctx (One v) (vmerge )
+  | vctx => c = Chc c (vmerge l vctx (One v)) r
+  | vctx => Not c = Chc c l (vmerge r vctx (One v))
+  | otherwise = Chc c (vmerge l vctx (One v)) (vmerge r vctx (One v))
+vmerge 
+
+vupdate :: Cond -> Var -> V v -> VStore v -> VStore v
+vupdate c k v vst = 
+  where
+    mkOpt = fmap Just
+    current = lookup k vst
+    case current of
+      Nothing -> insert k (Chc c (mkOpt v) (One Nothing)) vst
+      Just v -> insert k (vmerge c v current) vst
+\end{lstlisting}
+\caption{Variational map operations}
+\label{fig:varops}
+\end{figure}
 
 \def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
 \def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
