@@ -1,0 +1,22 @@
+\ProvidesPackage{ThesisCommon}
+
+% setup toggle
+\RequirePackage{etoolbox}
+\newtoggle{Pretty}
+
+% margins
+\setlength{\topmargin}{0in}
+\setlength{\headheight}{.5in}
+\setlength{\headsep}{.3in}
+\setlength{\oddsidemargin}{.7in}
+\setlength{\evensidemargin}{.0in}
+\setlength{\textwidth}{5.6in}
+\setlength{\footskip}{.5in}
+
+% section headings
+\RequirePackage{titlesec}
+\newcommand{\headfont}{\fontsize{14}{18}\selectfont}
+\newcommand{\headcaps}[1]{\textls[100]{\headfont\MakeUppercase{#1}}}
+
+% appendixes
+\RequirePackage[titletoc]{appendix}

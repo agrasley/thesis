@@ -1,0 +1,477 @@
+\NeedsTeXFormat{LaTeX2e}
+
+%
+% Include this package for the grad school compliant version of the thesis.
+%
+\ProvidesPackage{ThesisUgly}
+
+% load shared defs, set toggle
+\RequirePackage{ThesisCommon}
+\togglefalse{Pretty}
+
+% override a hack for the pretty version
+\newcommand{\newtocpage}{}
+\newcommand{\newlofpage}{}
+
+% rest copied and modified from BeavTeX.cls ...
+
+
+% Redefine the default (plain) pagestyle
+\renewcommand{\ps@plain}{%
+  \renewcommand{\@oddhead}{%
+    \ifnum\value{page}=1\else
+    \hfil\thepage
+    \fi
+  }
+}
+
+\newif\if@seploa
+\@seploafalse
+
+% To clear completely empty pages. It's not really that necessary. The
+% submission version is single-sided and won't need this anyway.
+\renewcommand{\cleardoublepage}{%
+  \clearpage%
+  \if@twoside%
+  \ifodd\c@page%
+  \else\mbox{}\thispagestyle{empty}\newpage%
+  \if@twocolumn\mbox{}\newpage\fi\fi\fi%
+}
+
+% Authors: use \mainmatter before the main content
+\renewcommand{\mainmatter}{%
+  \cleardoublepage%
+  \@mainmattertrue%
+  \pagestyle{plain}
+  \setcounter{page}{1}%
+  \pagenumbering{arabic}%
+}
+
+\newcommand{\ext@toc}{toc}
+
+% A definition generator for variables.
+% #1: optional default value, if missing, the variable is mandatory. Failing to
+% define it will raise a latex error.
+% #2: command to define the variable
+
+% \define{somevar} will define a new command \somevar with 1 parameter. It
+% stores the contents to a variable \@somevar.
+
+\newcommand{\definevar}[2][-]{%
+  \expandafter\def\csname #2\endcsname{%
+    \expandafter\gdef\csname @#2\endcsname
+  }
+  \if#1-
+  \csname #2\endcsname{\@latex@error{No #2 defined}\@ehc}
+  \else
+  \csname #2\endcsname{#1}
+  \fi
+}
+
+\definevar{title}
+\definevar{author}
+\definevar{doctype}
+\definevar{degree}
+\definevar{major}
+\definevar{department}
+\definevar{advisor}
+
+\definevar[*]{twomajor}
+\definevar[*]{twodepartment}
+\definevar[*]{coadvisor}
+
+\definevar[Chair]{depthead}
+\definevar[Chair]{twodepthead}
+\definevar[Department]{depttype}
+\definevar[Department]{twodepttype}
+
+\definevar[\today]{submitdate}
+\definevar[\the\year]{commencementyear}
+
+\definevar{abstract}
+\definevar[*]{nopretext}
+
+% \xxxcontent commands will be generated when we generate definitions for the
+% pretext pages. the following definitions provide backward compatibility and
+% nicer names.
+\newcommand{\acknowledgements}{\ackcontent}
+\newcommand{\contributors}{\contricontent}
+\newcommand{\preface}{\prefcontent}
+\newcommand{\dedication}{\dedcontent}
+
+%-------------------------------------------------------------------------------
+% Document parts. See T.G.
+%-------------------------------------------------------------------------------
+\newcommand{\emptyline}{\mbox{} \newline}
+
+\newcommand{\advisorstring}{%
+  \hfill
+  \if\@coadvisor * \@advisor
+  \else \@advisor\hfill\@coadvisor
+  \fi 
+  \hfill
+}
+
+% Flyleaf, a blankpage
+\newcommand{\flyleaf}{\thispagestyle{empty} \mbox{} \newpage}
+
+% Abstract page
+\newcommand{\abspage}{
+  \pagestyle{empty}
+  \begin{doublespacing} 
+    \begin{center} 
+      \headcaps{AN ABSTRACT OF THE \@doctype\ OF}
+    \end{center}
+    \begin{flushleft}
+      \noindent
+      \underline{\@author} for the degree of \underline{\@degree} in 
+      \if\@twomajor * \underline{\@major} 
+      \else
+      \underline{\@major} and \underline{\@twomajor}
+      \fi
+      presented on \underline{\@submitdate}.\\
+      \emptyline
+      \noindent Title: \underline{\@title}
+    \end{flushleft}
+    \emptyline
+    Abstract approved: \hrulefill \\
+    \phantom{Abstract approved:\ }\advisorstring
+    \vspace{1em}
+  \end{doublespacing}
+  
+  \@abstract
+  \clearpage
+}
+% Copyright page
+\newcommand{\copyrightpage}{
+  \begin{singlespacing}
+  \thispagestyle{empty}
+  \vspace*{10\baselineskip}
+  \begin{center}
+    \raisebox{2pt}{\textcopyright} Copyright by \@author\\
+    % Copyright \textcopyright\ \@author\\
+    \@submitdate \\
+    All Rights Reserved
+    % All rights reserved
+  \end{center}
+  \end{singlespacing}
+  \clearpage
+}
+% Title page
+\renewcommand{\titlepage}{
+    \thispagestyle{empty}
+    \begin{center}
+      \setlength{\baselineskip}{14.5pt}
+      {\headfont \@title} \\
+      \emptyline by\\ \emptyline
+      \@author\\
+      \vfill
+      A \textls[100]{\MakeUppercase{\@doctype}}\\ \emptyline
+      submitted to\\ \emptyline
+      Oregon State University\\
+      \vfill
+      in partial fulfillment of\\
+      the requirements for the\\
+      degree of\\ \emptyline
+      \@degree
+      \vfill
+      Presented \@submitdate\\
+      Commencement June \@commencementyear
+    \end{center}
+  \clearpage
+}
+% Approval page
+\newcommand{\approvalpage}{
+  \thispagestyle{empty}
+  \begin{singlespacing}
+    \begin{flushleft}
+      \noindent
+      \underline{\@degree} \MakeLowercase{\@doctype} of \underline{\@author}\\
+      \medskip
+      presented on \underline{\@submitdate}. \\
+      \vspace{3em}
+      \textls[100]{APPROVED}:\\
+      \vspace{3em}
+      \hrulefill \\
+      % Major Professor (Co- if there is a coadvisor}
+      \if\@coadvisor *
+      \else Co-\fi Major Professor, representing \@major \\
+      \vspace{3em}
+      % Second major professor if exists
+      \if\@coadvisor *
+      \else\hrulefill \\  Co-Major Professor, representing \@twomajor \\
+      \vspace{3em}
+      \fi
+      \hrulefill \\ 
+      % major department head
+      \@depthead\ of the \@depttype\ of \@department \\
+      \vspace{3em}
+      \if\@twodepartment * 
+      \else
+      % Here is the second Department
+      \hrulefill \\ 
+      \@twodepthead\ of the \@twodepttype\ of \@twodepartment \\
+      \vspace{3em}
+      \fi
+      \hrulefill \\
+      Dean of the Graduate School \\
+      \vfill
+      I understand that my \MakeLowercase{\@doctype} will become part of the
+      permanent collection of Oregon State University libraries. My signature
+      below authorizes release of my \MakeLowercase{\@doctype} to any reader
+      upon request.
+      \vspace{3em} \\
+      \hrulefill \\
+      \makebox[\textwidth]{\hfill \@author, Author \hfill}
+    \end{flushleft}
+  \end{singlespacing}
+  \clearpage
+}
+
+% A definition generator for general pretext pages.
+% #1: short name
+% #2: page title
+
+% \definepretextpage{name}{title} generats a command \namepage, \namecontent,
+% a internal variable \@namecontent, and an environment \namepageenv.
+% 
+% Authors: Use \namecontent to define the contents to be displayed. If it is not
+% specified, the page will not be produced. You can also change the environment
+% by using \renewenvironment{namepageenv}.
+
+\newcommand{\definepretextpage}[2]{%
+  \expandafter\def\csname #1pageenv\endcsname{} % {\begin{flushleft}}
+  \expandafter\def\csname end#1pageenv\endcsname{} % {\end{flushleft}}
+  \definevar[*]{#1content}
+  \expandafter\newcommand\csname #1page\endcsname{%
+    \if\csname @#1content\endcsname *
+    \else
+    \thispagestyle{empty}
+    \begin{center}
+      {\headfont #2}
+    \end{center}
+    \noindent
+    \emptyline
+    \csname #1pageenv\endcsname
+    \csname @#1content\endcsname
+    \csname end#1pageenv\endcsname
+    \clearpage
+    \fi
+  }
+}
+
+% Ackknowledgements, contribution, dedication, and preface.
+\definepretextpage{ack}{\headcaps{ACKNOWLEDGEMENTS}}
+\definepretextpage{contri}{\headcaps{CONTRIBUTION OF AUTHORS}}
+\definepretextpage{ded}{\headcaps{DEDICATION}}
+\definepretextpage{pref}{\headcaps{PREFACE}}
+
+% Format all of the frontmatter
+
+% The commands for optional pages will check if the content is defined. If not,
+% the page will not be produced. There is no need to check here.
+\newcommand{\pretext}{%
+  % Mandatory pages
+  \flyleaf           % A. Flyleaf
+  \abspage           % B. Abstract
+  \copyrightpage     % C. Copyright page
+  \titlepage         % D. Title page
+  \approvalpage      % E. Approval page
+
+  % Optional pages
+  \ackpage           % F. Acknowledgments
+  \contripage        % G. Contribution of authors
+
+  % Listings
+  \tableofcontents        % H.
+  \listoffigures          % I.
+  \listoftables           % J
+  \listofappendices       % K.
+  \listofappendixfigures  % L.
+  \listofappendixtables   % M.
+
+  % Optional pages
+  \dedpage           % O. Dedication
+  \prefpage          % P. Preface
+}
+
+\renewcommand{\maketitle}{\if\@nopretext \else\pretext\fi}
+
+% Chapter heading. T.G. : all title must be the same size (14 or normal).
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{10\p@}%
+  {
+    \begin{center}
+      \normalfont\headfont
+      \ifnum \c@secnumdepth >\m@ne
+      \if@mainmatter\headfont\@chapapp\ \thechapter\ --\ \fi
+      \fi
+      \headfont #1\par\nobreak
+      \vskip 20\p@
+    \end{center}
+  }
+}
+%% Silent chapter heading (\chapter*).
+\renewcommand{\@makeschapterhead}[1]{%
+  \vspace*{10\p@}%
+  {
+    \begin{center}
+      \normalfont\headfont
+      \headfont #1\par\nobreak
+      \vskip 20\p@
+    \end{center}
+  }
+}
+\def\@sect#1#2#3#4#5#6[#7]#8{%
+  \ifnum #2>\c@secnumdepth
+    \let\@svsec\@empty
+  \else
+    \refstepcounter{#1}%
+    \protected@edef\@svsec{\@seccntformat{#1}\relax}%
+  \fi
+  \@tempskipa #5\relax
+  \ifdim \@tempskipa>\z@
+    \begingroup
+      #6{%
+        \@hangfrom{\hskip #3\relax\@svsec}%
+          \interlinepenalty \@M #8\@@par}%
+    \endgroup
+    \csname #1mark\endcsname{#7}%
+    \addcontentsline{\ext@toc}{#1}{%
+      \ifnum #2>\c@secnumdepth \else
+        \protect\numberline{\csname the#1\endcsname}%
+      \fi
+      #7}%
+  \else
+    \def\@svsechd{%
+      #6{\hskip #3\relax
+      \@svsec #8}%
+      \csname #1mark\endcsname{#7}%
+      \addcontentsline{\ext@toc}{#1}{%
+        \ifnum #2>\c@secnumdepth \else
+          \protect\numberline{\csname the#1\endcsname}%
+        \fi
+        #7}}%
+  \fi
+  \@xsect{#5}}
+\renewcommand{\section}{\@startsection
+  {section}%                   % the name
+  {1}%                         % the level
+  {0mm}%                       % the indent
+  {-\baselineskip}%            % the before skip
+  {0.5\baselineskip}%          % the after skip
+  {\normalfont\headfont}}       % the style
+\renewcommand{\subsection}{\@startsection
+  {subsection}%                % the name
+  {1}%                         % the level
+  {0mm}%                       % the indent
+  {-\baselineskip}%            % the before skip
+  {0.5\baselineskip}%          % the after skip
+  {\normalfont\headfont}}       % the style
+\renewcommand{\subsubsection}{\@startsection
+  {subsubsection}%             % the name
+  {1}%                         % the level
+  {0mm}%                       % the indent
+  {-\baselineskip}%            % the before skip
+  {0.5\baselineskip}%          % the after skip
+  {\normalfont\headfont}}       % the style
+
+% Listings. l@kind handles an entry of a "kind" in the listing
+
+% T.G. : No bold faces should appear in the pretext (including the listings, of
+% course). This is why l@chapter is being redefined here.
+\def\l@chapter#1#2{%
+  \ifnum \c@tocdepth >\m@ne
+    \addpenalty{-\@highpenalty}%
+    \vskip 1.0em \@plus\p@
+    \setlength\@tempdima{1.5em}%
+    \begingroup
+      \parindent \z@ \rightskip \@pnumwidth
+      \parfillskip -\@pnumwidth
+      \leavevmode %\large
+      \advance\leftskip\@tempdima
+      \hskip -\leftskip
+      #1\nobreak\hfil \nobreak\hb@xt@\@pnumwidth{\hss #2}\par
+      \penalty\@highpenalty
+    \endgroup
+  \fi}
+% For separate listings of appendices ([seploa] is set), every appendix is
+% listed the same as a chapter, otherwise it is like a section. not sure if it's
+% the optimal solution. but it looks nice for now.
+\def\l@app#1#2{%
+  \if@seploa\l@chapter{#1}{#2}
+  \else{\vskip 4pt {\baselineskip 14.5pt%
+    \@dottedtocline{1}{1pc}{2em}{#1}{#2}}}
+  \fi
+}
+\def\l@section#1#2{\vskip 4pt {\baselineskip 14.5pt%
+    \@dottedtocline{1}{1pc}{2.8em}{#1}{#2}} }
+\def\l@subsection#1#2{ {\baselineskip 14.5pt%
+    \@dottedtocline{2}{4pc}{2.8em}{#1}{#2}}}
+\def\l@subsubsection#1#2{{\baselineskip 14.5pt%
+    \@dottedtocline{3}{7pc}{3.4em}{#1}{#2}}}
+\def\l@figure#1#2{\vskip 9.5pt {\baselineskip 14.5pt%
+    \@dottedtocline{1}{1.5em}{2.3em}{#1}{#2}}}
+\let\l@table\l@figure
+
+% We want to ignore footnotes in any listing. If this is not what you want,
+% change the line starting with \let\footnote in \definelisting
+\newcommand{\@ignore}[1]{}
+
+% There are these kinds of listings:
+% Table of contents (toc)
+% List of tables (lot)
+% List of figures (lof)
+% List of appendices (loa)
+% List of appendix tables (loat)
+% List of appendix figures (loaf)
+
+% A definition generator for listings. It generates two page styles (one for the
+% first page, one for the rest) and a command.
+% #1 : file extension name
+% #2 : full name (to appear as the heading of the listing)
+% #3 : short name (to appear as the heading on the top of the left column)
+% #4 : command name (to be used to make the listing)
+\newcommand{\definelisting}[4]{
+  % Page style for the first page. If twoside is set, the page is an
+  % oddpage. Otherwise, \evenhead is not used anyway.
+  \expandafter\newcommand\csname ps@#1a\endcsname{%
+    \renewcommand{\@oddhead}{%
+      \parbox{\textwidth}{%
+        \centering {\headfont #2} \\ 
+        \underline{#3}\hfill\underline{Page}
+      }
+    }
+    \renewcommand{\@oddfoot}{}
+    \renewcommand{\@evenfoot}{}
+  }
+  % Page style for the following pages
+  \expandafter\newcommand\csname ps@#1b\endcsname{%
+    \renewcommand{\@oddhead}{%
+      \parbox{\textwidth}{%
+        \centering {\headfont #2\ (Continued)} \\ 
+        \underline{#3}\hfill\underline{Page}
+      }
+    }
+    \renewcommand{\@evenhead}{\@oddhead}
+    \renewcommand{\@oddfoot}{}
+    \renewcommand{\@evenfoot}{}
+  }
+  % The command itself. I had to use \def rather than \newcommand because we
+  % might be redefining \tableofcontents.
+  \expandafter\def\csname #4\endcsname{%
+    \cleardoublepage
+    \pagestyle{#1b}
+    \thispagestyle{#1a}
+    {\let\footnote\@ignore\@starttoc{#1}}
+  }
+}
+
+\definelisting{toc}{\headcaps{TABLE OF CONTENTS}}{}{tableofcontents}
+\definelisting{lof}{\headcaps{LIST OF FIGURES}}{Figure}{listoffigures}
+\definelisting{lot}{\headcaps{LIST OF TABLES}}{Table}{listoftables}
+\definelisting{loa}{\headcaps{LIST OF APPENDICES}}{}{listofappendices}
+\definelisting{loaf}{\headcaps{LIST OF APPENDIX FIGURES}}{Figure}{listofappendixfigures}
+\definelisting{loat}{\headcaps{LIST OF APPENDIX TABLES}}{Table}{listofappendixtables}
+
+\endinput

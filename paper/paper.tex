@@ -1,4 +1,5 @@
-\documentclass[onehalf,11pt]{beavtex}
+\documentclass[12pt,oneside]{book}
+\usepackage{ThesisUgly}
 
 \usepackage{amssymb}                                         
 \usepackage{amsmath}                                         
@@ -20,6 +21,24 @@
 \usepackage{cc-ext}
 \usepackage{alltt}
 \usepackage{textcomp}
+
+% formatting
+\usepackage{graphicx,float}
+\usepackage{caption}
+\usepackage{setspace}
+\usepackage{enumerate,paralist}
+\usepackage[flushmargin]{footmisc}
+\usepackage{natbib}
+\onehalfspacing
+\widowpenalty=10000
+\clubpenalty=10000
+\setlength{\headsep}{0.5in}
+
+% font stuff
+\usepackage{microtype}
+\usepackage[T1]{fontenc}
+\usepackage[osf,sc]{mathpazo}
+\usepackage[scaled=0.85]{beramono}
 
 % define Haskell verbatim environments
 \DefineVerbatimEnvironment{hprogram}{Verbatim}
@@ -304,6 +323,7 @@ labeled nodes they share identical instances. The usefulness of defining these i
 apparent further on in this work during the discussion of pure, side-effect free variational languages.
 
 \section{Properties of choices}
+\label{sec:props}
 
 % sharing is desirable. what is sharing?
 The choice calculus enables several desirable properties for variational programs.
@@ -375,7 +395,11 @@ The process of ``variationalizing" this small example is quite straightforward. 
 constructor to support choices in our language:
 
 \begin{lstlisting}
-data Arith = N Int | Add Arith Arith | Mul Arith Arith | AChc Cond Arith Arith
+data Arith =
+      N Int
+    | Add Arith Arith
+    | Mul Arith Arith
+    | AChc Cond Arith Arith
 \end{lstlisting}
 
 Next we modify our interpreter. Instead of returning plain values of type \prog{Int},
@@ -800,7 +824,7 @@ $C \wedge \neg C'$.
 \def \BigVBChcTwo {\infer [VB-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,e') \Downarrow_{VB} v} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} v}}
 \def \BigVBChcThree {\infer [VB-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} v} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} v}}
 
-\begin{figure}
+\begin{figure}[H]
 \begin{syntax}
 \text{(Store)}\\
 S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
@@ -811,7 +835,10 @@ u &::=& n & \textit{Integer literal} \\
 v &::=& b & \textit{Boolean literal} \\
 & | & \tagtree{C}{v}{v} & \textit{Choice}
 \end{syntax}
+\end{figure}
 
+\begin{figure}[H]
+\ContinuedFloat
 \begin{mathpar}
 \BigVNum \and
 \BigVRef \and
@@ -828,7 +855,7 @@ v &::=& b & \textit{Boolean literal} \\
 \BigVBChcThree
 \end{mathpar}
 \label{fig:vimpexpr}
-\caption{Big-step semantics of Variational IMP with Effects expressions}
+\caption{Big-step semantics of Variational IMP expressions}
 \end{figure}
 
 \newcommand{\GetCtx}[2]{\mathit{ctx}(#1,#2)}
@@ -847,7 +874,7 @@ v &::=& b & \textit{Boolean literal} \\
 \def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\GetCtx{C}{(l:[])},S'[(\GetCtx{C}{E},x) \rightarrow \mathit{combine}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S'',E')}}
 \def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
 
-\begin{figure}
+\begin{figure}[H]
 \begin{syntax}
 \text{(Store)}\\
 S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
@@ -865,8 +892,10 @@ l &::=& [] & \textit{Nil} \\
 E &::=& [] & \textit{Nil} \\
 & | & l : E & \textit{Cons} \\ 
 \end{syntax}
+\end{figure}
 
-
+\begin{figure}[H]
+\ContinuedFloat
 \begin{mathpar}
 \BigVSat \and
 \BigVUnsat \and
@@ -880,15 +909,15 @@ E &::=& [] & \textit{Nil} \\
 \BigVCatch \and
 \BigVChc
 \end{mathpar}
-\caption{Big-step semantics of Variational Imp with Effects statements}
+\caption{Big-step semantics of Variational Imp statements}
 \label{fig:vimpstmt}
 \end{figure}
 
-\begin{flalign*}
-& \mathit{ctx}(C,[]) & = &\ C & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & &  & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & &  \\
-& \mathit{ctx}(C,([]:E)) & = &\ \mathit{ctx}(C,E) \\
-& \mathit{ctx}(C,((C',n):xs):ys) & = &\ \mathit{ctx}(C \wedge \neg C',xs:ys)
-\end{flalign*}
+%\begin{flalign*}
+%& \mathit{ctx}(C,[]) & = &\ C & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & &  & & & & & & & & & & & & & & & & & & & & & & & & & & & & & & &  \\
+%& \mathit{ctx}(C,([]:E)) & = &\ \mathit{ctx}(C,E) \\
+%& \mathit{ctx}(C,((C',n):xs):ys) & = &\ \mathit{ctx}(C \wedge \neg C',xs:ys)
+%\end{flalign*}
 
 \chapter{The Resource DSL}
 \label{ch:rdsl}
@@ -1072,17 +1101,41 @@ of several techniques utilized here.
  Building on the above work with the \textsc{While} language, Nguyen, K\"astner, and Nguyen developed the Varex interpreter for a subset of PHP \cite{varex}.
  Varex successfully demonstrated the ability to test plugin interactions in the highly configurable WordPress application. Varex adds support for throwing
  exceptions, but they are not catchable. Varex's exceptions are also reported directly when encountered as a side effect of execution, rather than producing
- a variational error value as the result of execution. Nevertheless, Varex demonstrates the utility of developing a variational interpreter for a subset of an
+ a variational error value as the result of execution. Varex especially demonstrates the utility of developing a variational interpreter for a subset of an
  existing language.
  
-  
+ Meinicke's VarexJ is an implementation of a variational Java VM \cite{varexj}. VarexJ handles both throwing and catching exceptions, but it does so
+ at the level of Java bytecode instructions. This low-level approach is therefore difficult to generalize to arbitrary variational imperative languages, and
+ is of more use when variationalizing a VM.
+ 
+ Variational interpreters are not the only places where side effects and variation interact. For example, Chen, Erwig, and Walkingshaw's work
+ on typing variational lambda calculus makes use of \emph{masks} that are similar to VIMP's error contexts \cite{chen2012error}. The central
+ notion here is that when typechecking a variational program, it is desirable to continue typechecking variants that are not in an error state when
+ an error is encountered in a separate variant.
 
 \chapter{Conclusion and Future Work}
 \label{ch:conc}
 
+This thesis has defined a formal operational semantics for a simple variational imperative language. It is our hope that
+this could serve as the basis for a formal proof that VIMP satisfies the correctness property outlined in Section \ref{sec:props}.
+Such a proof would give the highest level of confidence that the techniques outlined herein are sound and can safely be
+applied to more complex languages.
 
-\bibliographystyle{plain}
+This work has focused primarily on mutable state and exceptions. It is an area of future research to explore the interactions
+of other types of effects with variation. In particular, it is unclear how variational programs that must somehow interact with
+the outside world through IO operations should be handled. It is likely that a variational language that supports IO would also
+need to be paired with variational constructs in the operating system itself, such as variational files and filesystems, variational
+databases, etc. There has already been some progress made in this area on the database front \cite{ataei2017variational,vldb}, but more work is necessary
+with regards to how to integrate variational execution with such operating system entities.
+
+
+\cleardoublepage
 \bibliography{paper}
+\bibliographystyle{plain}
+
+\clearpage\flyleaf
+
+\end{document}
 
 
 \end{document}
