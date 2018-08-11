@@ -323,6 +323,7 @@ efficiency of modern SAT solvers, often the worst-case NP-complete performance o
 problems can be avoided.
 
 \section{Implementation of Formula Trees}
+\label{sec:genvimpl}
 
 When integrating formula trees into an existing non-variational language we can choose to
 either embed choices directly into the abstract syntax of the host language or utilize a type-generic
@@ -431,19 +432,22 @@ and the function itself. This can be visualized as the following commuting diagr
 \chapter{Motivation}
 \label{ch:mot}
 
-In order to take advantage of the benefits of sharing provided by choices, we must develop variational
-models of execution for a given language. We begin by showing that defining variational execution in a pure,
+In order to take advantage of the benefits of sharing provided by choices, we must develop a variational
+model of execution for a given language. We begin by showing that defining variational execution in a pure,
 side-effect free evaluation context is a fairly straightforward exercise before turning to the much more
 difficult problem of variational execution with side effects.
 
 \section{Pure variational execution}
 
-If we do not have to worry about side effects in our language that we wish to introduce variation to then
+If our target language has no side effects then
 our task is comparatively easy. We begin by considering a simple arithmetic expression language
 defined by the following Haskell datatype:
 
 \begin{lstlisting}
-data Arith = N Int | Add Arith Arith | Mul Arith Arith
+data Arith =
+    N Int
+  | Add Arith Arith
+  | Mul Arith Arith
 \end{lstlisting}
 
 In the non-variational setting we can easily define an interpreter for this language which produces
@@ -456,7 +460,7 @@ eval (Add l r) = eval l + eval r
 eval (Mul l r) = eval l * eval r
 \end{lstlisting}
 
-The process of ``variationalizing" this small example is quite straightforward. First, we add a
+The process of ``variationalizing'' this small example is quite straightforward. First, we extend the syntax by adding a
 constructor to support choices in our language:
 
 \begin{lstlisting}
@@ -470,7 +474,7 @@ data Arith =
 Next we modify our interpreter. Instead of returning plain values of type \prog{Int},
 we now return \emph{variational} values of type \prog{V Int}. We then take the cases
 from the non-variational interpreter and make them variational by situating them within the
-applicative functor instance for \prog{V} we defined in Section 2. Finally, we add a case
+applicative functor instance for \prog{V} we defined in Section \ref{sec:genvimpl}. Finally, we add a case
 that handles our new \prog{AChc} constructor and we have completed the conversion of our
 interpreter:
 
@@ -503,8 +507,9 @@ on applicative functors as we have outlined here.
 
 To demonstrate why imperative programming with side effects requires us to rethink how we
 variationalize a language and its execution, we turn to a small example in a simple imperative
-language that supports basic control structures and variables with mutable state:
+language that supports basic control structures and mutable variable references:
 
+\begin{samepage}
 \begin{algorithmic}
 \STATE $x \coloneqq 0$
 \STATE $y \coloneqq$ getSecret()
@@ -512,22 +517,24 @@ language that supports basic control structures and variables with mutable state
 \STATE{$x \coloneqq 1$}
 \ENDIF
 \end{algorithmic}
+\end{samepage}
 
 In a non-variational setting, we can reasonably expect the final state of the variables in this example
-to be either $\{x \Rightarrow 0,\ y \Rightarrow \text{false}\}$ or
-$\{x \Rightarrow 1,\ y \Rightarrow \text{true}\}$ depending on the value that
-\prog{getSecret()} evaluates to. Now we consider the execution of the above example in a variational
+to be either $\{x \Rightarrow 0,\ y \Rightarrow \CCkeyw{false}\}$ or
+$\{x \Rightarrow 1,\ y \Rightarrow \CCkeyw{true}\}$ depending on the value that
+\prog{getSecret()} returns. Now we consider the execution of the above example in a variational
 setting. Suppose that the call to \prog{getSecret}
-produces the variational value $\tagtree{A}{\text{true}}{\text{false}}$. We can view this as simply
+produces the variational value $\tagtree{A}{\CCkeyw{true}}{\CCkeyw{false}}$. We can view this as simply
 combining the two possible non-variational execution paths described above into a
 single execution varying in dimension $A$. As such, we would expect the final variable state
-in this example to be  $\{x \Rightarrow \tagtree{A}{1}{0},\ y \Rightarrow \tagtree{A}{\text{true}}{\text{false}}\}$ by combining the final states above into choices over dimension $A$. We can verify this to be the proper variational result using the correctness relationship
-specified in Section 2.
+in this example to be  $\{x \Rightarrow \tagtree{A}{1}{0},\ y \Rightarrow \tagtree{A}{\CCkeyw{true}}{\CCkeyw{false}}\}$ by combining the final states above into choices over dimension $A$. We can verify this to be the proper variational result using the variation-preserving property
+specified in Section \ref{sec:props}.
 
 Of course, to arrive at the above result, we simply worked backwards from the non-variational
-results. In order to take advantage of the benefits provided by sharing, we must instead develop a model
+results. This naive approach cannot scale to domains with a high number of dimensions because of the exponential
+explosion of variants. In order to take advantage of the benefits provided by sharing, we must instead develop a model
 of variational execution that supports mutable state.  As we will see, the applicative functor instance for
-\prog{V} is no longer sufficient by itself, necessitating a different approach to how we variationalize programs
+formula trees is no longer sufficient by itself, necessitating a different approach to how we variationalize programs
 that use mutable state.
 
 The central problem becomes obvious when we compare the required semantic domains for evaluating statements
@@ -537,10 +544,10 @@ semantic domain for variational statements is also from state to state, only in 
 we attempt to evaluate our example under this semantic domain we soon reach an issue that causes us to rethink our definition.
 
 The problem comes in line 4, where we assign the variable $x$ in a conditional block. In the previous line, we check if the value of
-$y$ is true. When $y$ is a variational value, allowing it to be both true or false in different variants, we only assign $x$ in those variants
-in which $y$ is true. But if the state in our semantic domain is only a map, we have no way of passing the necessary information to the
+$y$ is $\CCkeyw{true}$. When $y$ is a variational value, allowing it to be both $\CCkeyw{true}$ or $\CCkeyw{false}$ in different variants, we only assign $x$ in those variants
+in which $y$ is $\CCkeyw{true}$. But if the state in our semantic domain is only a map, we have no way of passing the necessary information to the
 assignment that it must only occur in particular variants and not in others. Our only choice is to assign the value of $x$ for all variants,
-which would clearly be incorrect, as the assignment should only be carried out in the variant where $y$ is true. We must therefore
+which would clearly be incorrect, as the assignment should only be carried out in the variant where $y$ is $\CCkeyw{true}$. We must therefore
 conclude that we need to carry this variational context information around in our state during execution in order to handle cases where
 assignment occurs in a branch that is conditionally executed. Similar logic can be used to see that this context is also necessary to handle
 variational lookup of variable values.
@@ -549,36 +556,13 @@ It is now clear why our previous approach of relying solely on the applicative f
 no way of maintaining and manipulating variational context during execution. This nicely demonstrates the problems we encounter when
 trying to introduce choices to languages with side effects.
 
-%\begin{program}
-%type Var = String
-%data AExpr = N Int | Ref Var | GetSecret
-%data BExpr = Equ AExpr AExpr
-%data Stmt = Assn Var AExpr | If BExpr Block
-%type Block = [Stmt]
-%
-%evalAExpr :: AExpr -> State -> Int
-%evalAExpr (N i) _ = i
-%evalAExpr (Ref x) s = lookup x s
-%evalAExpr GetSecret = undefined
-%
-%evalBExpr :: BExpr -> State -> Bool
-%evalBExpr (Equ l r) s = evalAExpr l s == evalAExpr r s
-%
-%evalStmt :: Stmt -> State -> State
-%evalStmt (Assn x e) s = update x (evalAExpr e) s
-%evalStmt (If e ss) s | evalBExpr e s = evalBlock ss s
-%                     | otherwise     = s
-% 
-%evalBlock :: Block -> State -> State
-%evalBlock b s = foldl (flip evalStmt) s b
-%\end{program}
-
 \section{Exceptions}
 \label{sec:except}
 
 Exceptions are another common type of effect that proves challenging in a variational setting.
 Consider the following program:
 
+\begin{samepage}
 \begin{algorithmic}
 \STATE $y \coloneqq$ getSecret()
 \IF{$y$ is true}
@@ -586,27 +570,28 @@ Consider the following program:
 \ENDIF
 \STATE{$x \coloneqq$ expensiveFn()}
 \end{algorithmic}
+\end{samepage}
 
 In a non-variational context, the behavior of this program should be clear.
-If the variable $y$ evaluates to \textbf{true}, then an error is thrown with value
+If the variable $y$ evaluates to $\CCkeyw{true}$, then an error is thrown with value
 $e$. At this point evaluation should stop, meaning that the variable $x$ is never
 assigned in the final statement, avoiding the costly computation of \prog{expensiveFn}. This effect of halting execution and
 returning an error value is the essence of exceptions in non-variational settings.
 
 Now we consider the behavior of the same program in a variational context.
 Suppose that the variable $y$ evaluates to the variational value
-$\tagtree{A}{true}{false}$. This means that in the left alternative of $A$ we
-would evaluate the body of the if statement, while ignoring it otherwise. Therefore,
+$\tagtree{A}{\CCkeyw{true}}{\CCkeyw{false}}$. This means that in the left alternative of $A$ we
+would evaluate the body of the $\CCkeyw{if}$ statement, while ignoring it otherwise. Therefore,
 in the left alternative of $A$ we throw an exception, but otherwise we continue on to the
 final statement.
 
 Clearly maintaining the same behavior from the non-variational setting in the variational setting
-violates correctness. If we halt execution whenever an exception is
+violates variation-preservation. If we halt execution whenever an exception is
 thrown in any variant, then we also stop the evaluation of variants that never encountered an error,
-as in our example for the case $\neg A$. Correctness dictates that variants that never encountered
+as in our example for the case $\neg A$. Variation-preservation dictates that variants that never encountered
 an exception should complete their execution uninhibited.
 
-We also can't simply continue evaluation
+We also don't want to simply continue evaluation
 in every variant regardless of whether or not we have encountered an error.
 Suppose that calling \texttt{expensiveFn} normally would evaluate to the variational value $\tagtree{A}{1}{2}$, but at considerable computational cost in both alternatives.
 Because we know that the left alternative of $A$ will ultimately evaluate to the thrown exception $e$, we would
@@ -620,19 +605,22 @@ In the non-variational context we have no need to store and remember error value
 because we simply return the error value immediately when it is thrown. In the variational context, we
 must now store these values while we continue to evaluate variants that are not in an error state.
 
-\section{Comparison with Existing Work}
+\section{Towards a formal semantics}
 
 At this point, it should be apparent that introducing choices into a side-effectful imperative language
-is anything but straightforward. The issues described above have been encountered repeatedly in efforts to
-make variational versions of the While language \cite{varwhile}, PHP \cite{varex}, and Java \cite{varexj}.
-The work on Varex the variational PHP interpreter, in particular demonstrates useful strategies for dealing
-with mutable state and exceptions in a variational language.
-In our work on the Resource DSL we independently discovered many of the same techniques used by Varex
-to deal with these issues.
-This work builds on the methods of handling variational effects discovered in the efforts to variationalize the
-above languages by providing a formal operational semantics for the IMP language, a simple, albeit Turing-complete, imperative
-language. It is our hope that a formal operational semantics for a simple imperative language will allow for easy application
-and extension to variational imperative languages of differing levels of complexity.
+is anything but straightforward. These issues are not new, and have been encountered in previous
+work on variationalizing imperative languages \cite{varwhile,varex,varexj}. Along the way a number of
+techniques have been developed to address these issues. Our work synthesizes these techniques into
+a single big-step operational semantics for a simple imperative language. Along the way we also develop
+novel techniques of our own, particularly when it comes to catchable exceptions, which to our knowledge
+have not been adequately explored in a variational setting.
+
+It is our hope that a formal semantics for common side effects encountered in variational imperative programming
+will serve as the base for future work in this area. By collecting and formalizing the techniques shared among variational
+imperative programming languages, future researchers should be able to (1) more easily define and create variational
+languages by extending our semantics to more complex languages and (2) more easily formalize desriable properties in these languages.
+In Chapter \ref{ch:rdsl} we demonstrate one successful application
+of these techniques in the form of the Resource DSL.
 
 \chapter{IMP}
 \label{ch:imp}
