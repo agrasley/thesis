@@ -670,7 +670,7 @@ handler block.
 We define a formal big-step semantics for this non-variational version of IMP, which we can then use as a point of reference for our variational semantics.
 Figure \ref{fig:impexpr} defines the big-step semantics of arithmetic and boolean expressions. Expressions are evaluated in the context of the current variable
 store and are otherwise straightforward in their definition. Figure \ref{fig:impstmt} defines the big-step semantics of IMP statements. Statements have two possible
-side effects: updating the variable store or updating the current error context. In practice the variable store can be simply implemented as a map data structure, while
+side effects: updating the variable store or modifying the current error context. In practice the variable store can be simply implemented as a map data structure, while
 the error context is an optional integer value indicating the current error code.
 
 \def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
