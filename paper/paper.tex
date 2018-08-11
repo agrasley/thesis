@@ -95,7 +95,7 @@ This permits the efficient checking of many possible configurations against
 a set of resource requirements.
 
 During development of the Resource DSL, we encountered a number of
-difficulties in the interaction of variation and side effects. Previous variational
+challenges in the interaction of variation and side effects. Previous variational
 languages have encountered similar issues and have developed a range of
 techniques to address them. This thesis builds upon this work
 and provides a formal operational semantics for a simple imperative language
@@ -146,7 +146,7 @@ my extended family, in particular Claudia Webb for caring for me so much during 
 studies. I love you all and am glad I have such an amazing
 family.
 
-TODO: grant
+This work was supported by AFRL Contract FA8750-16-C-0044 (via Raytheon BBN Technologies) under the DARPA BRASS program.
 }
 
 
@@ -164,12 +164,12 @@ Variation is an extremely common element in modern software. Variation in softwa
 thought of as broadly belonging to several interrelated categories: variation that is resolved statically, variation that is preserved during analysis,
 and variation that is present during execution.
 Variation that is resolved staticially is commonly found in preprocessor directives, command line options, or aspect- or feature-oriented
-programming languages \cite{apel2008feature,kiczales1997aspect,prehofer1997feature}.
+programming \cite{apel2008feature,kiczales1997aspect,prehofer1997feature}.
 These all share the common behavior of taking some set of features as input and
 producing a program or executable uniquely determined by those features as output. Variational analysis seeks to preserve this variation during program analysis.
 For example, the Typechef tool preserves the variation present in C preprocessor annotations in order to typecheck massively variational codebases such as
 the Linux kernel \cite{kenner2010typechef}.
-Variational that is preserved at runtime, or variational execution, occurs whenever a single
+Variation that is preserved at runtime, or variational execution, occurs whenever a single
 program is run multiple times on related inputs, but may also be viewed as running a program with static variation without eliminating that variation first.
 Serial execution of the same program over different inputs can be viewed in the abstract
 as equivalent to a single execution across a value representing all inputs and producing a similar value representing all outputs.
@@ -183,7 +183,7 @@ be an insurmountable obstacle to efficiently handling variation in the face of a
 
 Of course, the situation is not quite as hopeless as it might first appear. In all these types of variation
 there are significant elements that are shared in common between variants. In statically resolved variation this might take the form of pieces of code such as functions
-or classes that are shared between multiple variants. When analyzing such programs, significant portions of the analysis will be shared across many variants. In the case of variational execution often computations are performed across several variants.
+or classes that are shared between multiple variants. When analyzing such programs, significant portions of the analysis will be shared across many variants. In the case of variational execution often the same computations are performed across several variants.
 By exploiting these commonalities what previously seemed impossible often becomes quite efficient. Software systems analysis that takes advantage of variation
 in this way---commonly termed \emph{variationally-aware} analysis---has been developed across a number of areas, including typechecking, type inference, and
 testing \cite{kenner2010typechef,chen2014extending,thum2014classification}. In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
@@ -202,13 +202,14 @@ query results across options, making it potentially easier to identify patterns 
 Of course, the design and implementation of the Resource DSL was not without its particular challenges. One particularly interesting and difficult aspect of developing
 the variational interpreter for the Resource DSL was accounting for side effects in a variational setting. The Resource DSL itself is primarily interested in side effects: programs are
 made up primarily of either operations that somehow modify a resource environment or assertions against the current state of that environment. For this reason, the
-Resource DSL is implemented as an imperative language, with side-effectful statements forming the basis of programs in the language. The interactions of side effects
+Resource DSL is implemented as an imperative language, with side-effectful statements forming the basis of programs in the language. The interaction of side effects
 like mutable state and throwing exceptions with variation proved to be difficult to get right. Previous work on making imperative languages variational has developed a
 number of techniques to handle the interactions between side effects and variation. This thesis seeks to formalize these techniques using a sample big-step operational
 semantics for a simple imperative programming language. With the formal underpinnings thus established, we then turn to a discussion of how they are utilized in more
 full-featured language like our Resource DSL.
 
 \section{Contributions and Outline}
+\label{sec:contrib}
 
 This thesis provides two primary contributions: (1) a formal semantics for variational imperative languages
 and (2) a description of our design of the Resource DSL. These are of course intrinsically linked, where
@@ -218,7 +219,7 @@ a specific variational imperative language, namely the Resource DSL.
 Chapter 2 (\emph{Background}) provides an overview of the choice calculus, which provides a formal
 model for reasoning about variation. It describes one way of implementing variational values in the
 choice calculus via formula trees. Finally, several desirable properties that are enabled by or
-crucial to the choice calculus are discussed.
+key to the choice calculus are discussed.
 
 Chapter 3 (\emph{Motivation}) establishes the motivation for our work on formalizing
 the semantics of variational imperative languages. We first establish
@@ -267,7 +268,7 @@ to as a formula tree \cite{walkingshaw2014projectional,walkingshaw2014variationa
 Formula trees represent the set of alternatives as a tree of choices, with concrete
 values at the leaves of the tree. Each node of the tree is tagged with a formula from a boolean
 algebra consisting of boolean literals, variables, negation, conjunction, and disjunction. We call individual
-boolean variables the \emph{dimensions} of the choices, while the expressions as a whole we call \emph{conditions}. Notationally we represent these choice trees
+boolean variables the \emph{dimensions} of the choices, while the boolean expressions used as tags we call \emph{conditions}. Notationally we represent these choice trees
 via angle brackets. For example, a choice in dimension $A$
 between the values $1$ and $2$ is written $\tagtree{A}{1}{2}$.
 
@@ -280,10 +281,10 @@ is a value that represents $1$ when feature $A$ is present and $B$ is absent, an
 The \emph{selection} operation on a choice can be used to eliminate conditions. We define a function
 \emph{sel} that takes a \emph{selector} and a variational value and eliminates conditions based off
 of the selector. For formula trees selectors are also booleans formulas, and can be seen as specifying
-a condition that is assumed to hold true. Therefore, for a given condition and
-selector, we eliminate the choice and replace it with the left branch if the selector logically implies
+a condition that is assumed to hold true. Therefore, for a
+selector and a choice with a given condition, we eliminate the choice and replace it with the recursively selected left alternative if the selector logically implies
 the truth of the condition. Similarly, if the selector logically implies the falsehood of the condition, we eliminate the choice
-and replace it with the right branch. If neither implication is valid, the choice remains untouched with
+and replace it with the recursively selected right alternative. If neither implication is valid, the choice remains untouched with
 both alternatives left intact.
 
 It is helpful to see this selection operation in action. The operation
@@ -294,16 +295,16 @@ value $\tagtree{A}{1}{2}$ because the selector $B$ does not logically imply eith
 of dimension $A$.
 
 Selection is \emph{synchronized} for a given
-condition, meaning that two choices in the same value or expression that share a condition must always
+condition, meaning that two choices in the same value or expression with logically equivalent conditions must always
 select the same alternative. For example, in the expression $\tagtree{A}{1}{2}+\tagtree{A}{3}{4}$,
 the only possible selections are $1+3$ and $2+4$, while $1+4$ and $2+3$ can never occur due
 to synchronization.
 
-We say that a choice is \emph{configured} when all conditions
+We say that a variational value is \emph{configured} when all choices
 have been eliminated, yielding a plain value without choices. We call these resulting plain values
 \emph{variants}. We define a function \emph{conf} which takes a
 \emph{configuration} and a variational value and produces a variant. Under the view of dimensions as representing distinct features, a configuration for a formula tree gives
-an assignment for each dimension of the variational value being configured.
+a boolean assignment for each dimension of the variational value being configured.
 A simple way to do this is to define a configuration as a list of the features that are present, with all
 other features assumed to be absent. In other words, configurations are a list of variables that should
 evaluate to true, with all other variables evaluating to false. Configuring a formula tree is then simply evaluating
@@ -316,7 +317,7 @@ one of a number of optimizations that are made possible by representing tags as 
 \cite{walkingshaw2014projectional,hubbard2016formula}. Formula choices are also more convenient
 for maintaining a variational context during execution of a program, a fact that will become
 more relevant when we present our work on variational imperative programming later in
-this work. Despite these advantages, formulas incur some cost by introducing boolean
+Chapter \ref{ch:vimp}. Despite these advantages, formulas incur some cost by introducing boolean
 satisfiability problems into many common operations, which is an NP-complete problem. However, thanks to improvements in the
 efficiency of modern SAT solvers, often the worst-case NP-complete performance of these satisfiability
 problems can be avoided.
@@ -384,14 +385,26 @@ choices in our program, combined with a variability-aware model of execution all
 inherent sharing by only computing shared components once, greatly improving the efficiency of
 executing a variational program.
 
+This sharing can be accomplished by pushing down choices as deeply as possible in variational
+values. For example, consider the variational expression $\tagtree{A}{3*2+4}{3*2+8}$. If we push
+the choice down as far as possible, we get $3*2+\tagtree{A}{4}{8}$. This identifies the subexpression
+$3*2$ as a shared element between variants $A$ and $\neg A$. A variational interpreter of this
+language could then safely only compute that subexpression once.
+
+This sharing is enabled but not required by the choice calculus. It is up to the implementor to
+ensure that the maximum degree of sharing is achieved. Nevertheless, there are a number of
+strategies for systematically simplifying variational values \cite{ericthesis}. The use of formula
+trees permits additional simplification operations \cite{hubbard2016formula,walkingshaw2014projectional}.
+
 % correctness and the commuting diagram
-Another property of choices and variation that we are interested in is \emph{correctness}. In order
+Another property of choices and variation that we are interested in is \emph{variation-preservation}. In order
 to take advantage of the benefits of sharing, we must develop a variability-aware model of execution
 that produces variational values as its result. In order to determine whether our variational results
 are correct we need a way to relate them back to the individual variants they represent.
+Variation-preservation assures us that each variant is faithfully modeled by the overall variational computation.
 
 Given a function $f : T \rightarrow U$ and its variational counterpart $g : V \rightarrow W$, we say that
-the relationship between the two is correct if for some configuration $c$ the following equality holds:
+the function $g$ is variation-preserving if for some configuration $c$ the following equality holds:
 $\mathit{conf}\ c \circ g = f \circ \mathit{conf}\ c$ \cite{hubbard2016formula}. Put simply, configuring the result
 of passing a variational value to a variational function should be the same as pre-configuring the input
 and the function itself. This can be visualized as the following commuting diagram:
@@ -412,12 +425,15 @@ and the function itself. This can be visualized as the following commuting diagr
 \end{tikzpicture}
 \end{center}
 
+
+
+
 \chapter{Motivation}
 \label{ch:mot}
 
 In order to take advantage of the benefits of sharing provided by choices, we must develop variational
 models of execution for a given language. We begin by showing that defining variational execution in a pure,
-side-effect free evaluation context is a fairly straight-forward exercise before turning to the much more
+side-effect free evaluation context is a fairly straightforward exercise before turning to the much more
 difficult problem of variational execution with side effects.
 
 \section{Pure variational execution}
