@@ -947,7 +947,7 @@ conf ds (Chc c l r) = if evalCond ds c then conf ds l else conf ds r
 \end{figure}
 
 Figure \ref{fig:varops} shows the implementation of the selection and configuration options for generic formula trees
-as defined in Chapter \ref{ch:bg}, using Haskell as a metalanguage. We show the implementation for generic formula trees
+as defined in Section \ref{sec:genvimpl}, using Haskell as a metalanguage. We show the implementation for generic formula trees
 here, with the understanding that it is trivially extended to VIMP's use of choices directly embedded into the syntax of the language.
 We begin by defining some useful utility functions when dealing with satisfiability, particularly the ability to express logical implication.
 
@@ -957,9 +957,12 @@ If the provided condition does not necessarily imply either the truth or falseho
 and maintained as a choice with the original condition.
 
 The configuration function \emph{conf} takes a list representing a set of dimensions and a variational value as its arguments. These dimensions can be viewed as
-features that are ``turned on" and should therefore evaluate to \prog{True}, with all other dimensions evaluating to \prog{False}. Put another way, the configuration
+features that are ``turned on'' and should therefore evaluate to \prog{True}, with all other dimensions evaluating to \prog{False}. Put another way, the configuration
 function requires a variable assignment for all of the dimensions in a configuration space in order to evaluate all conditions. With this assignment, configuration
 is a straightforward task of evaluating each choice's condition and selecting either the left or right alternative depending on if it evaluates to \prog{True} or \prog{False}, respectively.
+
+We utilize the selection function when performing variable lookup using a variational store, as explained in the following section. The configuration function is used to
+relate the result of variational execution back to individual variants, a process which we detail in Section \ref{TODO}.
 
 \section{Variational Context and Variational Store}
 
@@ -1019,6 +1022,17 @@ is that for a non-variational map of with values of type \prog{v}, a variational
 The variational values in the map must be of type \prog{Maybe v} in order to account for cases where a value is assigned in one variant but not in others. Our sample
 variational store is built on top of Haskell's \prog{Data.Map} library, but in theory any map data structure should suffice.
 
+In \prog{vlookup} we throw a runtime exception when a variable is undefined. Our semantics does not define the behavior of trying to access an undefined variable, but
+such cases are easily detected and prevented with a proper type system. Variational type systems have been studied extensively and readers seeking static guarantees
+that undefined variable access is impossible are referred to those works \cite{kenner2010typechef,chen2012error,chen2014extending}.
+
+The implementation of \prog{vupdate} that we present here, while adequate, has the potential for additional optimization. Currently \prog{vupdate} simply creates what amounts to a labeled list of variational values, where the variational context in which a variable was assigned is used as the label.
+This means that in order to lookup a variational value in a context stored at the end of such a list of length $n$, we must first perform $n$ satisfiability checks.
+Because satisfiability checks have the potential to be expensive operations, we would like to reduce the need for them as much as possible.
+BDD solvers are built to solve these sorts of problems, but integrating them with variational values is a non-trivial task and is left as a subject for future research.
+Short of integrating a BDD solver, there are other optimization or simplification operations that could be performed \cite{ericthesis,hubbard2016formula}, but which to perform and how frequently
+is also a subject beyond the scope of the current work.
+
 In VIMP, each evaluation step requires the current variational context. In VIMP's expressions, the variational context is passed to the lookup operation for any
 variable reference. Similarly, in VIMP's statements the variable assignment operation takes the current variational context as an argument.
 
@@ -1033,9 +1047,10 @@ modifications to account for the presence of exceptions.
 If we wish to stop execution in a variant when an exception is thrown, then the $\CCkeyw{throw}$ operation needs to be capable of returning its current variational context
 along with the specific error code of the exception. We have already incorporated a variational context into the execution of VIMP, so it is a trivial extension to have $\CCkeyw{throw}$
 return this value. The variational
-context framework also easily supports preventing the continued execution of variants that are in an error state. We simply need to incorporate an error context into our
-satisfiability checks such that the variational context is unsatisfiable for variants in an error state. This means that before beginning execution on a new variant we now check
-for (1) whether the given configuration is even possible and (2) whether the variant is currently in error and should not be executed. The error context can be easily derived
+context framework also easily supports preventing the continued execution of variants that are in an error state. We simply need to incorporate an error condition into our
+satisfiability checks such that the variational context is unsatisfiable for variants in an error state. Because an exception may have been thrown in the current variant, we extend
+our satisfiability checks to occur before executing each statement. This means that before beginning execution on a new statemtent we now check
+for (1) whether the configuration for the current varaint is even possible and (2) whether the variant is currently in error and should not be executed. The error condition can be easily derived
 by taking the disjunction of the variational contexts returned by all $\CCkeyw{throw}$ operations. To make entering an error context impossible we take the conjunction of
 the current variational context and the negation of the error context and check it for satisfiability before entering a new variant.
 
@@ -1074,10 +1089,21 @@ extract ((c,v):es) = Chc c v (extract es)
 \end{figure}
 
 
-With these requirements in mind, we define the error context carried during execution to be a stack of lists of pairs of variational contexts and error codes.
+With these requirements in mind, we define the error context carried during execution to be a stack of lists of pairs of error conditions and error codes.
 We also define the helper functions $\mathit{ctx}$, $\mathit{catchCtx}$ and $\mathit{extract}$. $\mathit{ctx}$ retrieves the condition for the satisfiability check
 before entering a new variant by combining the error context and the variational context. $\mathit{catchCtx}$ determines the correct variational context for a $\CCkeyw{catch}$
-block. $\mathit{extract}$ creates a variational value from all of the error codes thrown in a try block. Haskell implementations of these functions are presented in Figure \ref{fig:errhelpers}.
+block based on the top frame of the error stack. $\mathit{extract}$ creates a variational value from all of the error codes thrown in a try block, again based on the top stack frame. Haskell implementations of these functions are presented in Figure \ref{fig:errhelpers}.
+
+While we do not include a mechanism for it in our formal semantics, it is possible to implement an additional optimization for variational languages with exceptions.
+Satisfiability checks are expensive, and so performing a satisfiability check before each statement is executed is undesirable. In order to avoid this, variational interpreters
+can add a flag to signal when a block is ``dead'' and can safely stop execution. A call to $\CCkeyw{throw}$ sets the flag to indicate that further execution can be safely halted.
+The flag is removed when it occurs within a $\CCkeyw{try}$ block once execution reaches the corresponding $\CCkeyw{catch}$ block. For all other instances the flag indicates that
+the execution of a statement can safely be skipped.
+
+This flag value has an interesting interaction with choices. We only wish for a choice statement to set its flag when all variants can safely be ignored. If there is a single variant that is still active, then a choice statement should not set its flag, in this way suppressing the flags of its children. When the flag is set from inside of
+a choice, there is a simple procedure to check if the choice should propagate or suppress the flag. If both alternatives are either unsatisfiable or have the flag set, then
+the parent choice should set its flag, indicating that execution is halted for all possible variants. In the Resource DSL, we implement this system via an error monad,
+with errors serving as the flags and inserting catches for choices in order to inspect whether the parent should propagate the errors or suppress them.
 
 \section{Control Structures}
 \label{sec:control}
