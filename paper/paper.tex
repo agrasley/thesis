@@ -794,121 +794,11 @@ addition of choices into the expressions and statements of the language. We opte
 a generic formula tree implementation. While the end result should not depend on whether a generic or embedded implementation of choices is
 used, we felt that directly embedding choices led to cleaner semantic definitions.
 
-
 We also present the big-step operational semantics for VIMP expressions and statements. In the following sections we will discuss specific elements of these definitions.
 We begin by defining variational operations, such as configuration and selection as explained in Chapter \ref{ch:bg}. We then examine the need for maintaining a variational context during execution, especially in its relation to the variable store. We then turn to a discussion of
-catchable exceptions. Finally, we discuss interacting with control structures.
+catchable exceptions. We then discuss interacting with control structures. Finally, we present the formal big-step operational semantics for VIMP expressions and statements.
 
 
-\def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
-\def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
-\def \BigVAdd {\infer [VA-Add] {(C,S,e) \Downarrow_{VA} u \\ (C,S,e') \Downarrow_{VA} u'} {(C,S,e+e') \Downarrow_{VA} \mathit{liftA2}(+,u,u')}}
-\def \BigVAChcOne {\infer [VA-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} u \\ (C \wedge \neg C',S,a') \Downarrow_{VA} u'} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} \tagtree{C'}{u}{u'}}}
-\def \BigVAChcTwo {\infer [VA-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,a') \Downarrow_{VA} u} {(C,S,\tagtree{A}{a}{a'}) \Downarrow_{VA} u}}
-\def \BigVAChcThree {\infer [VA-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} u} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} u}}
-
-\def \BigVB {\infer [VB-Bool] { } {(C,S,b) \Downarrow_{VB} b}}
-\def \BigVNot {\infer [VB-Not] {(C,S,e) \Downarrow_{VB} v} {(C,S,\CCkeyw{not}\ e) \Downarrow_{VB} \mathit{liftA}(\neg,v)}}
-\def \BigVAnd {\infer [VB-And] {(C,S,e) \Downarrow_{VB} v \\ (C,S,e') \Downarrow_{VB} v'} {(C,S,e\ \CCkeyw{and}\ e') \Downarrow_{VB} \mathit{liftA2}(\wedge,v,v')}}
-\def \BigVLess {\infer [VB-Less] {(C,S,e) \Downarrow_{VA} v \\ (C,S,e') \Downarrow_{VA} v'} {(C,S,e<e') \Downarrow_{VB} \mathit{liftA2}(<,v,v')}}
-\def \BigVBChcOne {\infer [VB-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} v \\ (C \wedge \neg C',S,e') \Downarrow_{VB} v'} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \tagtree{C'}{v}{v'}}}
-\def \BigVBChcTwo {\infer [VB-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,e') \Downarrow_{VB} v} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} v}}
-\def \BigVBChcThree {\infer [VB-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} v} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} v}}
-
-\begin{figure}[H]
-\begin{syntax}
-\text{(Store)}\\
-S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
-\text{(Variational integers)}\\
-u &::=& n & \textit{Integer literal} \\
-& | & \tagtree{C}{u}{u} & \textit{Choice} \\
-\text{(Variational booleans)}\\
-v &::=& b & \textit{Boolean literal} \\
-& | & \tagtree{C}{v}{v} & \textit{Choice}
-\end{syntax}
-
-\begin{mathpar}
-\BigVNum \and
-\BigVRef \and
-\BigVAdd \and
-\BigVAChcOne \and
-\BigVAChcTwo \and
-\BigVAChcThree
-\end{mathpar}
-\label{fig:vimpexpr}
-\caption{Big-step semantics of Variational IMP expressions}
-\end{figure}
-
-\begin{figure}[H]
-\ContinuedFloat
-
-\begin{mathpar}
-\BigVB \and
-\BigVNot \and
-\BigVAnd \and
-\BigVLess \and
-\BigVBChcOne \and
-\BigVBChcTwo \and
-\BigVBChcThree
-\end{mathpar}
-\caption{Big-step semantics of Variational IMP expressions (continued)}
-\end{figure}
-
-\newcommand{\GetCtx}[2]{\mathit{ctx}(#1,#2)}
-\def \gc {\GetCtx{C}{E}}
-\def \T {\mathit{true}}
-\def \F {\mathit{false}}
-\def \BigVUnsat {\infer [V-Unsat] {\mathit{unsat}(\gc)} {(C,S,E,s) \Downarrow_{V} (S,E)}}
-\def \BigVSat {\infer [V-Sat] {\mathit{sat}(\gc) \\ (C,S,E,s) \Downarrow_{VS} (S',E')} {(C,S,E,s) \Downarrow_{V} (S',E')}}
-\def \BigVSkip {\infer[VS-Skip] { } {(C,S,E,\CCkeyw{skip}) \Downarrow_{VS} (S,E)}}
-\def \BigVAssn {\infer[VS-Assn] {(\gc,S,a) \Downarrow_{VA} u} {(C,S,E,x \coloneqq a) \Downarrow_{VS} (S[(\gc,x) \rightarrow u],E)}}
-\def \BigVSeq {\infer [VS-Seq] {(C,S,E,s) \Downarrow_{V} (S',E') \\ (C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,s\ ;\ s') \Downarrow_{VS} (S'',E'')}}
-\def \BigVIf {\infer [VS-If] {(\gc,S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenFalse}(v),S',E') \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_{VS} (S'',E'')}}
-\def \BigVWhile {\infer [VS-While] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} v \\ (C \wedge \mathit{whenTrue}(v),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenTrue}(v),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
-\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{l:E},S,a) \Downarrow_{VA} u} {(C,S,l:E,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,u):l):E)}}
-\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S',E)}}
-\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\mathit{catchCtx}(C,l),S'[(\GetCtx{C}{E},x) \rightarrow \mathit{extract}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S'',E')}}
-\def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
-
-\begin{figure}[H]
-\begin{syntax}
-\text{(Store)}\\
-S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
-& | & S[(C,x) \rightarrow u] & \textit{Update x in S to u with context C} \\
-\text{(Variational integers)}\\
-u &::=& n & \textit{Integer literal} \\
-& | & \tagtree{C}{u}{u} & \textit{Choice} \\
-\text{(Variational booleans)}\\
-v &::=& b & \textit{Boolean literal} \\
-& | & \tagtree{C}{v}{v} & \textit{Choice} \\
-\text{(Error lists)} \\
-l &::=& [] & \textit{Nil} \\
-& | & (C,u):l & \textit{Cons} \\
-\text{(Error context)} \\
-E &::=& [] & \textit{Nil} \\
-& | & l : E & \textit{Cons} \\ 
-\end{syntax}
-\caption{Big-step semantics of Variational Imp statements}
-\label{fig:vimpstmt}
-\end{figure}
-
-\begin{figure}[H]
-\ContinuedFloat
-\begin{mathpar}
-\BigVSat \and
-\BigVUnsat \and
-\BigVSkip \and
-\BigVAssn \and
-\BigVSeq \and
-\BigVIf \and
-\BigVWhile \and
-\BigVThrow \and
-\BigVTry \and
-\BigVCatch \and
-\BigVChc
-\end{mathpar}
-\caption{Big-step semantics of Variational Imp statements (continued)}
-\end{figure}
 
 
 \section{Variational Operations}
@@ -962,7 +852,7 @@ function requires a variable assignment for all of the dimensions in a configura
 is a straightforward task of evaluating each choice's condition and selecting either the left or right alternative depending on if it evaluates to \prog{True} or \prog{False}, respectively.
 
 We utilize the selection function when performing variable lookup using a variational store, as explained in the following section. The configuration function is used to
-relate the result of variational execution back to individual variants, a process which we detail in Section \ref{TODO}.
+relate the result of variational execution back to individual variants, a process which we detail in Section \ref{sec:bigvimp}.
 
 \section{Variational Context and Variational Store}
 
@@ -1116,13 +1006,183 @@ and continues execution. This might lead us to reevaluate the same conditional b
 conditional block would be lost. 
 
 The first issue is easily resolved by adding the context that caused the boolean value to be $\CCkeyw{true}$ (or in the case of $\CCkeyw{else}$ blocks, $\CCkeyw{false}$)
-to the variational context for the conditionally executed statements. For example, the statement
+to the variational context for the conditionally executed statements. For example, in the statement
 $\CCkeyw{if}\ \tagtree{A}{\CCkeyw{true}}{\CCkeyw{false}}\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s'$, the statement $s$ would be evaluated with variational context $A$, while
 $s'$ would be evaluated under $\neg A$.
 
+\begin{figure}
+\begin{lstlisting}
+whenTrue :: V Bool -> Cond
+whenTrue (One True) = Lit True
+whenTrue (One False) = Lit False
+whenTrue (Chc c l r) = (c :&&: whenTrue l) :||: (Not c :&&: whenTrue r)
+
+whenFalse = Not . whenTrue
+\end{lstlisting}
+\label{fig:when}
+\caption{Control structure helper functions}
+\end{figure}
+
 For the second issue, we need a way to extract a condition that encompasses all variants where a variational boolean value is $\CCkeyw{true}$ or, in the case of $\CCkeyw{else}$ blocks,
-$\CCkeyw{false}$. For this, we define two functions, $\mathit{whenTrue}$ and $\mathit{whenFalse}$ that return these conditions for a given variational boolean. We then use these
-values 
+$\CCkeyw{false}$. With these conditions in hand, we can simply evaluate a conditional block under the current variational context extended by the proper condition. For this, we define two functions, $\mathit{whenTrue}$ and $\mathit{whenFalse}$ that return these conditions for a given variational boolean.
+This technique was also originally discovered in \cite{varwhile}.  Figure \ref{fig:when} presents sample implementations of these functions.
+
+\section{Big-Step Semantics of VIMP}
+\label{sec:bigvimp}
+
+Finally we are prepared to present the big-step operational semantics for VIMP. Figures \ref{fig:h} and \ref{fig:vimpstmt} define the big-step semantics for VIMP expressions and
+statements, respectively.
+
+The judgments for variational expressions require a triple of the current variational context, the variable store, and the expression, producing a variational integer or boolean.
+The variational context is used as an argument to perform a lookup in the variable store whenever a variable reference is countered. It is also used to check when entering
+a new variant via a choice that the configuration is satisfiable. Because exceptions cannot be thrown at the expression level we do not need to incorporate an error context or
+perform satisfiability checks before each expression. We utilize the standard applicative functor lifting functions, $\mathit{liftA}$ and $\mathit{liftA2}$ to support embedding
+operations such as addition or comparison within a variational context.
+
+\def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
+\def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
+\def \BigVAdd {\infer [VA-Add] {(C,S,e) \Downarrow_{VA} \bar{n} \\ (C,S,e') \Downarrow_{VA} \bar{n}'} {(C,S,e+e') \Downarrow_{VA} \mathit{liftA2}(+,\bar{n},\bar{n}')}}
+\def \BigVAChcOne {\infer [VA-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} \bar{n} \\ (C \wedge \neg C',S,a') \Downarrow_{VA} \bar{n}'} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} \tagtree{C'}{\bar{n}}{\bar{n}'}}}
+\def \BigVAChcTwo {\infer [VA-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,a') \Downarrow_{VA} \bar{n}} {(C,S,\tagtree{A}{a}{a'}) \Downarrow_{VA} \bar{n}}}
+\def \BigVAChcThree {\infer [VA-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} \bar{n}} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} \bar{n}}}
+
+\def \BigVB {\infer [VB-Bool] { } {(C,S,b) \Downarrow_{VB} b}}
+\def \BigVNot {\infer [VB-Not] {(C,S,e) \Downarrow_{VB} \bar{b}} {(C,S,\CCkeyw{not}\ e) \Downarrow_{VB} \mathit{liftA}(\neg,\bar{b})}}
+\def \BigVAnd {\infer [VB-And] {(C,S,e) \Downarrow_{VB} \bar{b} \\ (C,S,e') \Downarrow_{VB} \bar{b}'} {(C,S,e\ \CCkeyw{and}\ e') \Downarrow_{VB} \mathit{liftA2}(\wedge,\bar{b},\bar{b}')}}
+\def \BigVLess {\infer [VB-Less] {(C,S,e) \Downarrow_{VA} \bar{b} \\ (C,S,e') \Downarrow_{VA} \bar{b}'} {(C,S,e<e') \Downarrow_{VB} \mathit{liftA2}(<,\bar{b},\bar{b}')}}
+\def \BigVBChcOne {\infer [VB-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \neg C',S,e') \Downarrow_{VB} \bar{b}'} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \tagtree{C'}{\bar{b}}{\bar{b}'}}}
+\def \BigVBChcTwo {\infer [VB-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,e') \Downarrow_{VB} \bar{b}} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \bar{b}}}
+\def \BigVBChcThree {\infer [VB-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} \bar{b}} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \bar{b}}}
+
+\begin{figure}[H]
+\begin{syntax}
+\text{(Store)}\\
+S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
+\text{(Variational integers)}\\
+\bar{n} &::=& n & \textit{Integer literal} \\
+& | & \tagtree{C}{\bar{n}}{\bar{n}} & \textit{Choice} \\
+\text{(Variational booleans)}\\
+\bar{b} &::=& b & \textit{Boolean literal} \\
+& | & \tagtree{C}{\bar{b}}{\bar{b}} & \textit{Choice}
+\end{syntax}
+
+\begin{mathpar}
+\BigVNum \and
+\BigVRef \and
+\BigVAdd \and
+\BigVAChcOne \and
+\BigVAChcTwo \and
+\BigVAChcThree
+\end{mathpar}
+\caption{Big-step semantics of Variational IMP expressions}
+\label{fig:h}
+\end{figure}
+
+\begin{figure}[H]
+\ContinuedFloat
+
+\begin{mathpar}
+\BigVB \and
+\BigVNot \and
+\BigVAnd \and
+\BigVLess \and
+\BigVBChcOne \and
+\BigVBChcTwo \and
+\BigVBChcThree
+\end{mathpar}
+\caption{Big-step semantics of Variational IMP expressions (continued)}
+\end{figure}
+
+
+The semantics of VIMP statements is slightly more complex when compared with expressions. First, we develop two separate
+judgment forms $\Downarrow_V$ and $\Downarrow_{VS}$. $\Downarrow_V$ judgments check whether the current context is satisfiable
+before executing the statement. $\Downarrow_{VS}$ judgments evaluate a statement given that it is in a satisfiable context. In this sense, $\Downarrow_V$
+can be seen as a wrapper ensuring satisfiability of contexts before proceeding with evaluation. Both judgments take a 4-tuple of the current variational context,
+the variable store, the current error context, and the statement to evaluate, and produce an updated state and error context.
+
+\begin{figure}
+\begin{lstlisting}
+type Store v = Map Var v
+
+confStore :: [Dim] -> VStore Int -> Store Int
+confStore ds = map fromJust (filter isNothing (map (conf ds)))
+
+confErr' :: [Dim] -> [Err] -> Maybe Int
+confErr' ds [] = Nothing
+confErr' ds ((c,i):es)
+  | evalCond ds c = Just i
+  | otherwise = confErr' ds es
+
+confErr :: [Dim] -> Stack [Err] -> Maybe Int
+confErr ds st = confErr' ds (concat st)
+\end{lstlisting}
+\caption{Configuration functions for variable store and error contexts}
+\label{fig:confstmt}
+\end{figure}
+
+The initial evaluation step should begin with the variational context $\CCkeyw{true}$, an empty variable store, and the error context $[[]]$. Derivations result
+in a variational variable store and an error context. In order to relate these results back to the non-variational IMP, we must define proper configuration operations
+for these results. Sample configuration functions are given in Figure \ref{fig:confstmt}. Configuring a variational map is a matter of configuring all the values in the map,
+filtering out those that configure to \prog{Nothing}, and then unwrapping the remainder from \prog{Just}. Configuring the error context just requires us to search all of the
+values until we find one that has a condition that evaluates to \prog{True} under the given configuration.
+
+
+\newcommand{\GetCtx}[2]{\mathit{ctx}(#1,#2)}
+\def \gc {\GetCtx{C}{E}}
+\def \T {\mathit{true}}
+\def \F {\mathit{false}}
+\def \BigVUnsat {\infer [V-Unsat] {\mathit{unsat}(\gc)} {(C,S,E,s) \Downarrow_{V} (S,E)}}
+\def \BigVSat {\infer [V-Sat] {\mathit{sat}(\gc) \\ (C,S,E,s) \Downarrow_{VS} (S',E')} {(C,S,E,s) \Downarrow_{V} (S',E')}}
+\def \BigVSkip {\infer[VS-Skip] { } {(C,S,E,\CCkeyw{skip}) \Downarrow_{VS} (S,E)}}
+\def \BigVAssn {\infer[VS-Assn] {(\gc,S,a) \Downarrow_{VA} \bar{n}} {(C,S,E,x \coloneqq a) \Downarrow_{VS} (S[(\gc,x) \rightarrow \bar{n}],E)}}
+\def \BigVSeq {\infer [VS-Seq] {(C,S,E,s) \Downarrow_{V} (S',E') \\ (C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,s\ ;\ s') \Downarrow_{VS} (S'',E'')}}
+\def \BigVIf {\infer [VS-If] {(\gc,S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \mathit{whenTrue}(\bar{b}),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenFalse}(\bar{b}),S',E') \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_{VS} (S'',E'')}}
+\def \BigVWhile {\infer [VS-While] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \mathit{whenTrue}(\bar{b}),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenTrue}(\bar{b}),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
+\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{l:E},S,a) \Downarrow_{VA} \bar{n}} {(C,S,l:E,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,\bar{n}):l):E)}}
+\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S',E)}}
+\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\mathit{catchCtx}(C,l),S'[(\GetCtx{C}{E},x) \rightarrow \mathit{extract}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S'',E')}}
+\def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
+
+\begin{figure}[H]
+\begin{syntax}
+\text{(Store)}\\
+S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
+& | & S[(C,x) \rightarrow u] & \textit{Update x in S to u with context C} \\
+\text{(Variational integers)}\\
+\bar{n} &::=& n & \textit{Integer literal} \\
+& | & \tagtree{C}{\bar{n}}{\bar{n}} & \textit{Choice} \\
+\text{(Variational booleans)}\\
+\bar{b} &::=& b & \textit{Boolean literal} \\
+& | & \tagtree{C}{\bar{b}}{\bar{b}} & \textit{Choice} \\
+\text{(Error lists)} \\
+l &::=& [] & \textit{Nil} \\
+& | & (C,\bar{n}):l & \textit{Cons} \\
+\text{(Error context)} \\
+E &::=& [] & \textit{Nil} \\
+& | & l : E & \textit{Cons} \\ 
+\end{syntax}
+\caption{Big-step semantics of Variational Imp statements}
+\label{fig:vimpstmt}
+\end{figure}
+
+\begin{figure}[H]
+\ContinuedFloat
+\begin{mathpar}
+\BigVSat \and
+\BigVUnsat \and
+\BigVSkip \and
+\BigVAssn \and
+\BigVSeq \and
+\BigVIf \and
+\BigVWhile \and
+\BigVThrow \and
+\BigVTry \and
+\BigVCatch \and
+\BigVChc
+\end{mathpar}
+\caption{Big-step semantics of Variational Imp statements (continued)}
+\end{figure}
+
 
 \chapter{The Resource DSL}
 \label{ch:rdsl}
