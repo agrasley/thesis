@@ -58,6 +58,7 @@
                {<*>}{$<\!\!\!\!\!*\!\!\!\!\!>{}$}{1}
                {>>=}{$>\!\!\!>\!={}$}{1}
                {->}{$\rightarrow{}$}{1}
+               {<-}{$\leftarrow{}$}{1}
                {<>}{$<\!\!\!\$\!\!\!>{}$}{1}
                {~}{$\${}\ $}{1}
                {'}{$^\prime{}$}{1},
@@ -187,7 +188,7 @@ or classes that are shared between multiple variants. When analyzing such progra
 By exploiting these commonalities what previously seemed impossible often becomes quite efficient. Software systems analysis that takes advantage of variation
 in this way---commonly termed \emph{variationally-aware} analysis---has been developed across a number of areas, including typechecking, type inference, and
 testing \cite{kenner2010typechef,chen2014extending,thum2014classification}. In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
-of languages, including PHP, Java, and Javascript \cite{varex,varexj,facted}.
+of languages, including PHP, Java, and Javascript \cite{varex,varexj,faceted}.
 
 The work in this thesis was primarily motivated by our work in defining a DSL for describing resource requirements in complex modern software
 systems. The Resource DSL allows users to write programs that assert certain conditions of a successful resource configuration for a project.
@@ -1200,20 +1201,22 @@ systems with large feature sets. In this section we describe the design and impl
 Resource DSL including several case studies of its use. In particular we pay special attention to the
 practical concerns brought on by integrating choices into an imperative language.
 
-\section{Resources}
+\section{Syntax}
+
+\subsection{Resources}
 
 In our language a resource is represented by a distinct primitive value. These primitive values
 can be either booleans, integers, floating point numbers, strings, or the unit value, as defined
 by the following Haskell datatype:
 
-\begin{program}
+\begin{lstlisting}
 data PVal
      = Unit
      | B Bool
      | I Int
      | F Double
      | S Symbol
-\end{program}
+\end{lstlisting}
 
 All resources are maintained in a global resource environment during execution of a program
 in the Resource DSL. This environment is a mapping from paths to resource values. Paths are
@@ -1225,82 +1228,94 @@ evaluated with respect to the execution environment's current path. For example,
 at the relative path \prog{../GPU/Speed} would evaluate to \prog{/Servers/Hardware/GPU/Speed}
 given an execution environment with \prog{/Servers/Hardware/CPU} as its current path.
 
-In a non-variational setting, resource environments could very easily be represented by a map data structure,
-with paths as the keys and primitive values as the values. All interaction with the resource environment can then
-simply be performed via the standard map operations (\emph{e.g.}, lookup, update, etc.). However, because our resource environment
-is variational we must slightly tweak this implementation. Resources can have different values in different
-variants, so we exchange values of type \prog{PVal} for \prog{V PVal}. But we soon note that simply exchanging primitive values
-for choices of primitive values is insufficient, as we are unable to
-account for cases where a resource is created or destroyed in only certain variants. We use \prog{Maybe} to represent this possibility
-that a resource may only exist in certain variants, leaving us with \prog{V (Maybe PVal)} for the type of resources in the global environment.
+The global resource environment is quite similar to VIMP's variable store. Both are used to maintain
+a global, mutable store of values. As such, we define the resource environment to be a variational map
+from paths to values of type \prog{V (Maybe PVal)}.
 
-Additionally, as explained in our discussion of the semantics of VIMP, all operations on our variational map must be variationally aware,
-taking as an additional argument the current execution's variational context. The Resource DSL supports variationally aware lookup,
-creation, deletion, and modification operations on variational maps. We provide a sample implementation of variational lookup, omitting
-the other operations for brevity:
+%In a non-variational setting, resource environments could very easily be represented by a map data structure,
+%with paths as the keys and primitive values as the values. All interaction with the resource environment can then
+%simply be performed via the standard map operations (\emph{e.g.}, lookup, update, etc.). However, because our resource environment
+%is variational we must slightly tweak this implementation. Resources can have different values in different
+%variants, so we exchange values of type \prog{PVal} for \prog{V PVal}. But we soon note that simply exchanging primitive values
+%for choices of primitive values is insufficient, as we are unable to
+%account for cases where a resource is created or destroyed in only certain variants. We use \prog{Maybe} to represent this possibility
+%that a resource may only exist in certain variants, leaving us with \prog{V (Maybe PVal)} for the type of resources in the global environment.
+%
+%Additionally, as explained in our discussion of the semantics of VIMP, all operations on our variational map must be variationally aware,
+%taking as an additional argument the current execution's variational context. The Resource DSL supports variationally aware lookup,
+%creation, deletion, and modification operations on variational maps. We provide a sample implementation of variational lookup, omitting
+%the other operations for brevity:
+%
+%\begin{program}
+%vlookup :: (Ord k) => Cond -> k -> Map k (V (Maybe v)) -> V (Maybe v)
+%vlookup vctx k env = case (lookup k env) of
+%    Nothing -> One Nothing
+%    Just v -> sel vctx v  -- sel is the standard selection operation for formula trees
+%\end{program}
 
-\begin{program}
-vlookup :: (Ord k) => Cond -> k -> Map k (V (Maybe v)) -> V (Maybe v)
-vlookup vctx k env = case (lookup k env) of
-    Nothing -> One Nothing
-    Just v -> sel vctx v  -- sel is the standard selection operation for formula trees
-\end{program}
-
-\section{Expressions}
+\subsection{Expressions}
 
 Of course, primitive resource values are of little use without ways of manipulating them. To this end the Resource DSL supports
 a number of common operations over primitive values in the form of a simple expression language. Expressions are formed by
 immutable variable references, references to resources by their specific path, literal primitive values, and a number of common unary, binary, and ternary
-operations, such as addition, negation, equality, ternary conditions, etc. Where appropriate, expressions utilize choices in order to support
-variational execution.
+operations, such as addition, negation, equality, ternary conditions, etc.
 
-\begin{program}
+\begin{lstlisting}
 data Expr
-     = Ref Var                             -- ^ variable reference
-     | Res Path                            -- ^ resource reference
-     | Lit (V PVal)                        -- ^ primitive literal
-     | P1  Op1 (V Expr)                    -- ^ primitive unary function
-     | P2  Op2 (V Expr) (V Expr)           -- ^ primitive binary function
-     | P3 Op3 (V Expr) (V Expr) (V Expr) -- ^ conditional expression
-\end{program}
+     = Ref Var    
+     | Res Path                            
+     | Lit (V PVal)           
+     | P1  Op1 (V Expr)                    
+     | P2  Op2 (V Expr) (V Expr)
+     | P3 Op3 (V Expr) (V Expr) (V Expr)
+\end{lstlisting}
+
+In order to support variational execution of programs in the resource DSL, we embed choices directly into the syntax of the language, which
+we first encounter here in the definition of expressions. In contrast to VIMP's approach, we opt to use the generic implementation of formula
+trees at all points in the language. This permitted us to write a single monadic handler for dealing with variational values at all syntactic levels
+of the language. We present this handler in Section \ref{sec:evalmonad}.
 
 The Resource DSL also supports unary functions over primitive values. The body of the function is simply a choice of expressions as defined above.
 The function takes a single parameter, which is a combination of the name the parameter will be bound to in the body of the function and type of the parameter. Because the
-type of the parameter may depend on the variant it is located in, we define types to be a choice of primitive types.
+type of the parameter may depend on the variant it is located in, we define types to be a choice of primitive types. The typechecking of the Resource DSL is further discussed
+in Section \ref{sec:typecheck}.
 
-\begin{program}
+\begin{lstlisting}
 data PType = TUnit | TBool | TInt | TFloat | TSymbol
 
 data Param = Param Var (V PType)
 
 data Fun = Fun Param (V Expr)
-\end{program}
+\end{lstlisting}
 
-\section{Effects on Resources}
+In contrast with VIMP, all variables, such as those created here as the parameters to unary functions, are immutable. This helps to simplify the semantics of the language, as well as preventing
+hard-to-detect user error when interacting with mutable variables.
+
+\subsection{Effects on Resources}
 
 Having established the representation of resources in our DSL as well as their manipulation via expressions and unary functions,
 we now turn to defining effects on the global resource environment.
-The Resource DSL supports four basic effects for resources: creation, deletion, modification, and checking/verification. All effects are performed
-within the current variational context of the execution. Deletion is the
-simplest, removing the resource at a particular path. Creation takes a path and an expression that produces a variational primitive value
+The Resource DSL supports four basic effects on resources: creation, deletion, modification, and checking/verification. As with VIMP,
+all effects on a mutable variational map like the resource environment must be performed with a given variational context. Deletion is the
+simplest, removing the resource at a particular path and replacing it with \prog{Nothing}. Creation takes a path and an expression that produces a variational primitive value
 and inserts that value into the resource environment. Modification takes a unary function over the value of the resource and replaces it
 with the result of the function. Checks take a unary function over the value of the resource that returns a boolean, with \prog{True} indicating
 success and \prog{False} indicating failure. When a check fails, an error is thrown, with an error message indicating what check failed.
 In this way, checks allow for a user to specify conditions or requirements that must hold for a particular resource.
 
-\begin{program}
+\begin{lstlisting}
 data Effect
      = Create (V Expr)
      | Check  Fun
      | Modify Fun
      | Delete
-\end{program}
+\end{lstlisting}
 
-\section{Statements}
+\subsection{Statements}
 
 Statements are used in order to sequence and combine the above effects into programs in the Resource DSL.
-The most basic statement is the \prog{Do} command, which takes a path to a resource and applies an effect to that
-path. The other statements are a collection of control structures that allow for the sequencing and construction of
+The most basic statement is the \prog{Do} command, which takes a path to a resource and applies an effect to the resource located there.
+The other statements are a collection of control structures that allow for the sequencing and construction of
 programs out of these \prog{Do} commands. \prog{If} and \prog{For} are straightforward control structures that allow
 for conditional execution and looping, respectively. \prog{In} executes a block in the context of a particular path, where all
 relative paths in an \prog{In} block are evaluated with reference to the supplied path value. This allows
@@ -1315,7 +1330,7 @@ efficient implementation of variational linked lists. A segment list is a list o
 plain lists or a choice between segment lists. Therefore, we define our blocks to be segment lists of
 statements.
 
-\begin{program}
+\begin{lstlisting}
 data Segment a = Elems [a] | Split BExpr (SegList a) (SegList a)
 type SegList a = [Segment a]
 type Block = SegList Stmt
@@ -1327,7 +1342,256 @@ data Stmt
      | For Var (V Expr) Block
      | Let Var (V Expr) Block
      | Load (V Expr) [V Expr]
-\end{program}
+\end{lstlisting}
+
+\subsection{Models and Profiles}
+
+Programs in the resource DSL are organized into \emph{Models} and \emph{Profiles}. Both take a list of
+initial parameters as input, which are converted into variables when evaluating the body of the program. Models are more straightforward to define,
+as their body is simply a statement block. By contrast, a Profile body is a direct mapping from resource paths to variational lists of effects. Profiles
+therefore do not support any of the control structures available to Models. Viewed another way, Profiles are Models that are restricted to \prog{In}
+and \prog{Do} statements. In fact, the Resource DSL provides a utility function \prog{toProfile} that automatically converts a Model to a Profile provided
+that the Model's body only contains \prog{In} and \prog{Do} statements.
+
+\begin{lstlisting}
+data Profile = Profile [Param] (Map Path (SegList Effect))
+data Model = Model [Param] Block
+\end{lstlisting}
+
+One might ask why include Profiles at all if they are strictly a subset of Models? The answer is that, where possible, Profiles
+are to be preferred over Models because they are declarative definitions of resource specifications. Declarative Profiles
+are much easier to compose and reason about in comparison to imperative Models. Certain parts of the Resource DSL
+even go so far as to require Profiles, such as the specification of mission requirements, which should only ever be made up
+of \prog{Check} effects. Models should only be used where necessary, which typically means resource configurations that are
+sensitive to the order in which effects are carried out or that require runtime decision making enabled through control structures.
+
+The execution environment maintains a dictionary of Profiles and Models. This is used to lookup the corresponding Profile or
+Model when a call to the \prog{Load} command is made. In this way users can organize their programs via subroutines that are
+called from a parent Model.
+
+
+\section{Execution} 
+
+The links between VIMP and the Resource DSL should now hopefully be apparent. Both are variational imperative
+languages that require support for mutable state and errors/exceptions. We now demonstrate how the Resource
+DSL implements some of the techniques detailed in VIMP in a real-world interpreter written in Haskell. In Haskell,
+side effects are typically implemented monadically, with multiple side effects being implemented by a monad transformer
+stack \cite{liang1995monad}. The principal evaluation mechanism in the Resource DSL is also monadic. Specifically,
+we utilize a reader monad instance for handling the current resource path prefix (set by \prog{In} statements),
+the immutable variable environment, and the dictionary of Models and Profiles; a State monad instance for handling
+the resource environment; and an exception monad instance for throwing runtime exceptions.
+We encountered
+some challenges in integrating variation into a monad transformer stack. This section details our conclusions with regards to
+how to successfully integrate variation into a monadic approach to effect handling.
+
+\subsection{Uncooperative Monads}
+
+Our first thought was simply to integrate the monad for formula trees into an existing Reader-State-Exception transformer stack by
+creating a monad transformer for formula trees.
+After all, we have an existing monad instance for formula trees. This would provide the benefit of easily integrating choices in the highly
+composable pattern that is the hallmark of monad transformers. As our work on VIMP shows, this would have never succeeded.
+Adding the monad instance for formula trees to the stack would not provide a variational context, or any other of the elements
+necessary to support side effects in a variational setting.
+
+This result is also unsurprising considering existing research into monad transformers. The list monad transformer has been
+proven to only be valid when composed with commutative monads, which includes our use of the state and exception monads \cite{jones1993composing}.
+The list monad is used to model nondeterminism. The monad instance for formula trees can be seen as modeling a kind of labeled nondeterminism.
+This can be further verified by comparing the behavior of both monads, which unwrap a collection of values, perform some computation, and
+place the results back into the collection. Given the proof that the list transformer monad only holds for commutative monads, it is no
+surprise that the similar variational monad also does not work by itself as a monad transformer.
+
+This result is somewhat unfortunate, as it means that the variational monad is not easily composable with existing languages
+that utilize monad transformer stacks for effect handling. The work on VIMP further supports this conclusion, as it suggests that
+integrating variation into an effectful language requires explicit support for a variational context that governs the execution of the
+language. However, we found that, while easily composing variation into an existing monad transformer stack is not possible, it
+is possible to keep the existing monad transformers as long as the proper care is taken with their usage. The next section
+describes our custom monadic handler for dealing with variation generically in the Resource DSL.
+
+\subsection{The Evaluation Monad}
+
+Rather than extending our monad transformer stack to handle variation, we simply retain the same monad transformer stack
+and add a special handler for dealing with variational values. We add the variational context to the reader context, and the error
+context to the state context. Unlike VIMP, we do not have a method for catching exceptions in the Resource DSL, so we have
+no need for a stack to roll back errors. Instead, the error context is made up of a condition that indicates which variants are in error
+and a single variational error value that contains all of the errors encountered. We provide the full definition of the monad transformer
+stack and their respective contexts in Figure \ref{fig:transstack}.
+
+\begin{figure}
+\begin{lstlisting}
+data Error = $\ldots$
+
+data StateCtx = SCtx {
+  renv :: Map Path (V (Maybe PVal)),
+  errCtx :: Cond,
+  errVal :: V (Maybe Error)
+}
+
+data ReaderCtx = RCtx {
+    prefix :: Path,
+    environment :: Map Var (V (Maybe PVal)),
+    dictionary :: Dictionary,
+    vCtx :: Cond
+}
+
+type MonadEval m = (MonadError (V (Maybe Error)) m, MonadReader RCtx m, MonadState StateCtx m)
+
+-- | A specific monad for running MonadEval computations
+type EvalM a = ExceptT Mask (StateT StateCtx (Reader Context)) a
+\end{lstlisting}
+\caption{Monad transformer stack definition}
+\label{fig:transstack}
+\end{figure}
+
+From here, we can begin to define a monad instance for handling variational values.
+Because it makes generically handling errors easier, we wrap all values in a \prog{Maybe},
+so that variational values in the Resource DSL all have the form \prog{V (Maybe a)}. This
+allows us to return a default value from alternatives that are in an error state with minimal
+computational overhead.
+
+We define a function \prog{vBind} that is analogous to the monadic bind operation, but for
+the type \prog{MonadEval m => m (V (Maybe a))} (Figure \ref{fig:vbind}). As Haskell does not allow us to write monad instances for this
+type, we define it as a standalone function. Of note is that vbind demonstrates the sort of flag-based exception handling optimization
+described in \ref{sec:varexcept}.
+
+\begin{figure}
+\begin{lstlisting}
+vMove :: MonadEval m => Cond -> m a -> m a
+vMove c m = do
+  vctx <- getVCtx
+  e <- getErrCtx
+  let c' = vctx :&&: c
+  if (unsat (vctx :&&: Not e)) then
+    throwError (One Nothing)
+  else
+    local ($\lambda$(Ctx p m dict _) -> Ctx p m dict c') m
+
+vHandle' :: MonadEval m =>
+    Cond -> 
+    m (V (Maybe a)) -> 
+    m (V (Maybe a)) -> 
+    m (V (Maybe a))
+vHandle' c l r = do
+  let r' = vMove (Not c) r
+  let l' = vMove c l
+  l'' <- l' `catchError` ($\lambda$e -> do
+    r' `catchError` ($\lambda$e' -> throwError (Chc c e e'))
+    return (One Nothing))
+  r'' <- r' `catchError` ($\lambda$_ -> return (One Nothing))
+  return (Chc c l'' r'')
+
+vHandle :: MonadEval m =>
+    Cond -> 
+    (V (Maybe a) ->
+    m (V (Maybe b))) ->
+    V (Maybe a) ->
+    V (Maybe a) ->
+    m (V (Maybe b))
+vHandle c f l r = vHandle' c (f l) (f r)
+
+vBind :: MonadEval m => m (V (Maybe a)) -> (a -> m (V (Maybe b))) -> m (V (Maybe b))
+vBind v f = do
+  v' <- v
+  case v' of
+    (One Nothing) -> return (One Nothing)
+    (One (Just a)) -> f a
+    (Chc c l r) -> vHandle c ($\lambda$v -> vBind (return v) f) l r
+\end{lstlisting}
+\caption{Definition of vBind}
+\label{fig:vbind}
+\end{figure}
+
+To resolve the problem of Haskell not permitting a monad definition for the type of \prog{vBind}, we wrap
+it in a newtype \prog{VM m a} and define the monad instance for this type, with the constraint that \prog{m} implements \prog{MonadEval}:
+
+\begin{lstlisting}
+instance (MonadEval m) => Functor (VM m) where
+  fmap = liftM
+
+instance (MonadEval m) => Applicative (VM m) where
+  pure = return
+  (<*>) = ap
+
+instance (MonadEval m) => Monad (VM m) where
+  return = VM . return . One . Just
+  v >>= f = VM ~ vBind (unVM v) (unVM . f)
+  \end{lstlisting}
+  
+\subsection{Throwing Exceptions}
+
+Throwing exceptions is handled by the function \prog{verror}, which updates the error context and the error value before
+throwing an exception for the current variant:
+
+\begin{lstlisting}
+vError :: MonadEval m => Error -> m a
+vError e = do
+  vctx <- getVCtx
+  updateErrCtx ($\lambda$c -> c :||: vctx)
+  updateErrVal ($\lambda$m -> Chc vctx (One (Just e)) m)
+  throwError (One (Just e))
+\end{lstlisting}
+
+\subsection{Interacting with the Resource Environment}
+
+Just like with VIMP, all interaction with the resource environment occurs within a particular variational context, retrieved
+from the current reader monad context.
+Additionally, the Resource DSL places requirements that attempting to access or modify a resource that does not exist,
+or create a resource at a path in which one already exists, results in a thrown exception. For brevity, we only present the
+variational lookup operation for the resource environment, omitting the implementations for modification, deletion, and creation.
+Note that \prog{vHandleUnit}, here omitted, is similar to \prog{vHandle} except for the type \prog{m ()} rather than \prog{m (V (Maybe a))}:
+
+\begin{lstlisting}
+vLookup' :: (MonadEval m, Ord k) => k -> Map k (V (Maybe v)) -> m (V (Maybe v))
+vLookup' k env
+    | Just v <- lookup k env = do
+      c <- getVCtx
+      return ~ select c v
+    | otherwise = return (One Nothing)
+
+checkExists :: MonadEval m => Error -> V (Maybe v) -> m ()
+checkExists e (One Nothing) = vError e
+checkExists _ (One (Just _)) = return ()
+checkExists e (Chc c l r) = vHandleUnit c (checkExists e) l r
+
+vLookup :: (MonadEval m, Ord k) => Error -> k -> Map k (V (Maybe v)) -> m (V (Maybe v))
+vLookup e k env = do
+  v <- vLookup' k env
+  checkExists e v
+  return v
+\end{lstlisting}
+
+\section{Evaluation and Use Cases}
+
+We implemented a full variational interpreter for the Resource DSL. Users provide a main application
+Model, an initial resource environment, mission requirements in the form of a Profile of \prog{Check}
+commands, a dictionary of available Profiles and Models, and initial parameters to the application Model.
+The interpreter runs the main application Model and then checks it against the mission requirements. 
+As outputs it produces the final variational resource environment, the error context, and the error value.
+All successful configurations should result in a variant that is not present in the error context. For unsuccessful
+configurations, selecting or configuring the variational error value produces an appropriate error message
+to help the user in determining the cause of the failure, which could be either a runtime error like a failed
+typecheck, or a failed call to the \prog{Check} command.
+
+Our implementation also
+comes with a convenient command-line interface for interacting with variational programs. Users
+are given the option of performing selection or configuration prior to execution. This allows users to
+eliminate configurations that they are not interested in, increasing efficiency in cases where certain
+configurations can be ruled out ahead of time. Keeping track of the error context allows us to use this
+value to support queries where a user supplies a boolean formula representing a configuration that they
+are interested in and the query returns whether that condition has any successful configurations.
+
+Our DSL has been tested against three example problems as part of its evaluation. The first test scenario
+concerned determining correct specification of resource environments that depend on location-based data,
+such as with GPS systems. The second test scenario concerned common networking resource requirements,
+such as making certain that there is enough available bandwidth in a network to handle transmissions of a particular
+size. The final test scenario concerned maintaining agreement between servers and clients in their use of cryptographic
+protocols provided by different available libraries.
+
+All of these test scenarios demonstrated the utility of a fully variational model of execution, but the final test scenario in particular
+provided an interesting test case. We were able to encode each cryptographic cipher, mode, keysize, and padding as a distinct
+dimension, along with the various provider libraries. This allowed for our variational interpreter to potentially check all possible
+configurations at once. This also meant that if a user were only interested in a particular subset of features, such as only AES
+encryption with CBC mode, they could simply preconfigure the program according to those specifications, avoiding unnecessary
+computation.
 
 \chapter{Related Work}
 \label{ch:rw}
