@@ -82,7 +82,7 @@
 \major{Computer Science}
 \advisor{Eric Walkingshaw}
 \submitdate{August 27, 2018}
-\commencementyear{2018}
+\commencementyear{2019}
 \abstract{
 Variation is a commonly encountered element of modern software systems.
 Recent research into variation has led to increasing interest in the
@@ -1604,6 +1604,10 @@ how to support catchable exceptions in a variational environment, which to our k
 In this chapter we compare our work to preceding work on variational execution, highlighting the development and implementation
 of several techniques utilized here.
 
+The first to develop a notion of variational execution were Erwig and Walkingshaw in their 2011 GTTSE tutorial \cite{erwig2013variation}.
+While it does not address the interaction of side effects with variation, it set the stage for future research by developing the choice calculus,
+as well as the functor, applicative, and monad instances that we have made use of in this work.
+
  K\"astner et al. \cite{varwhile} developed a proof-of-concept variational interpreter for the \textsc{While} language. This works shares a
  significant amount in common with our work on IMP, as both utilize toy imperative languages to develop a theory of variational execution
  with side effects. This work originated the concepts of maintaining a variational context during execution, defining a variational store as
@@ -1646,8 +1650,16 @@ of several techniques utilized here.
 \chapter{Conclusion and Future Work}
 \label{ch:conc}
 
-This thesis has defined a formal operational semantics for a simple variational imperative language. It is our hope that
-this could serve as the basis for a formal proof that VIMP satisfies the correctness property outlined in Section \ref{sec:props}.
+This thesis has provided a formal operational semantics for the variational imperative language VIMP.
+The techniques formalized in VIMP were then demonstrated in the implementation of the Resource DSL.
+Our intention is for this work to serve as the basis for future development of variational imperative languages.
+By providing a formal semantics as well as a detailed description of the various techniques involved in the
+implementation of variational imperative languages, we hope that future language developers will be able to
+more fully focus on language-specific features, rather than being bogged down in the common details of the interaction
+of variation with side effects.
+
+It is our hope that the formal semantics that we have developed here
+could serve as the basis for a formal proof that VIMP satisfies the correctness property outlined in Section \ref{sec:props}.
 Such a proof would give the highest level of confidence that the techniques outlined herein are sound and can safely be
 applied to more complex languages.
 
@@ -1658,6 +1670,14 @@ need to be paired with variational constructs in the operating system itself, su
 databases, etc. There has already been some progress made in this area on the database front \cite{ataei2017variational,vldb}, but more work is necessary
 with regards to how to integrate variational execution with such operating system entities.
 
+For the Resource DSL, we are interested in the possibilities that built-in support for SAT solving has for optimization.
+In our implementation of the test scenarios for the Resource DSL we noted that many computations that currently occur
+at runtime in our language could potentially be offloaded to a SAT or SMT solver. We are also interested in continuing to
+explore the domain of resource specifications for the potential to support fully declarative specifications. In the current iteration
+of the Resource DSL we reluctantly included models as a way to encode fully imperative programs with support for sequencing
+and control structures. If possible, we would like to move further in the direction of our declarative profiles. This however would require
+ways of addressing resource configurations in which the order in which effects are performed and sequenced is important in a declarative
+way, which ultimately may not be possible.
 
 \cleardoublepage
 \bibliography{paper}
