@@ -28,7 +28,6 @@
 \usepackage{setspace}
 \usepackage{enumerate,paralist}
 \usepackage[flushmargin]{footmisc}
-\usepackage{natbib}
 \onehalfspacing
 \widowpenalty=10000
 \clubpenalty=10000
@@ -86,22 +85,22 @@
 \commencementyear{2018}
 \abstract{
 Variation is a commonly encountered element of modern software systems.
-One area in which variation is frequently encountered is in defining
-configurations and resource requirements for the deployment of such
-systems. To this end, we have developed the Resource DSL, a language that aids in the specification
-of resource requirements for highly configurable software systems.
-In the Resource DSL,
-variation is a first-class language construct.
-This permits the efficient checking of many possible configurations against
-a set of resource requirements.
+Recent research into variation has led to increasing interest in the
+development of variational programming languages and corresponding
+variational models of execution. Variational imperative languages pose a
+particular challenge due to the complex interactions between side effects and
+variation. The development of interpreters for variational imperative languages
+has produced a number of techniques to address these interactions. This
+thesis builds upon and formalizes these techniques by defining a formal
+operational semantics for a simple imperative language that supports both
+variation and common side effects.
 
-During development of the Resource DSL, we encountered a number of
-challenges in the interaction of variation and side effects. Previous variational
-languages have encountered similar issues and have developed a range of
-techniques to address them. This thesis builds upon this work
-and provides a formal operational semantics for a simple imperative language
-that includes both variation and side effects. After presenting this formalization,
-we demonstrate how it is successfully applied in our work on the Resource DSL.
+We also provide an example of the successful implementation of these techniques
+in the form of the Resource DSL.
+One area in which variation is frequently encountered is in defining
+configurations and resource requirements for the deployment of modern software systems.
+To this end, we have developed the Resource DSL, a language that aids in the specification
+of resource requirements for highly configurable software systems.
 }
 \acknowledgements{
 First and foremost I want to thank my wife, Sara, without whom this certainly
@@ -244,7 +243,11 @@ an error context, and special interactions with control structures. With these e
 we define the formal semantics of Variational IMP.
 
 Chapter 6 (\emph{The Resource DSL}) describes our work on developing a variational
-language for checking resource configurations. TODO: flesh this out a big more.
+language for checking resource configurations. We describe the syntax and general function
+of programs in the Resource DSL. Then, we describe the implementation of the variational
+interpreter for the Resource DSL based on the common pattern of a monad transformer stack.
+This provides a real-world example of an interpreter that implements the techniques formalized
+in Chapter 5.
 
 Chapter 7 (\emph{Related Work}) provides an overview of existing approaches to
 variational imperative programming, and compares our contributions with the prior
@@ -1232,27 +1235,6 @@ The global resource environment is quite similar to VIMP's variable store. Both 
 a global, mutable store of values. As such, we define the resource environment to be a variational map
 from paths to values of type \prog{V (Maybe PVal)}.
 
-%In a non-variational setting, resource environments could very easily be represented by a map data structure,
-%with paths as the keys and primitive values as the values. All interaction with the resource environment can then
-%simply be performed via the standard map operations (\emph{e.g.}, lookup, update, etc.). However, because our resource environment
-%is variational we must slightly tweak this implementation. Resources can have different values in different
-%variants, so we exchange values of type \prog{PVal} for \prog{V PVal}. But we soon note that simply exchanging primitive values
-%for choices of primitive values is insufficient, as we are unable to
-%account for cases where a resource is created or destroyed in only certain variants. We use \prog{Maybe} to represent this possibility
-%that a resource may only exist in certain variants, leaving us with \prog{V (Maybe PVal)} for the type of resources in the global environment.
-%
-%Additionally, as explained in our discussion of the semantics of VIMP, all operations on our variational map must be variationally aware,
-%taking as an additional argument the current execution's variational context. The Resource DSL supports variationally aware lookup,
-%creation, deletion, and modification operations on variational maps. We provide a sample implementation of variational lookup, omitting
-%the other operations for brevity:
-%
-%\begin{program}
-%vlookup :: (Ord k) => Cond -> k -> Map k (V (Maybe v)) -> V (Maybe v)
-%vlookup vctx k env = case (lookup k env) of
-%    Nothing -> One Nothing
-%    Just v -> sel vctx v  -- sel is the standard selection operation for formula trees
-%\end{program}
-
 \subsection{Expressions}
 
 Of course, primitive resource values are of little use without ways of manipulating them. To this end the Resource DSL supports
@@ -1277,8 +1259,8 @@ of the language. We present this handler in Section \ref{sec:evalmonad}.
 
 The Resource DSL also supports unary functions over primitive values. The body of the function is simply a choice of expressions as defined above.
 The function takes a single parameter, which is a combination of the name the parameter will be bound to in the body of the function and type of the parameter. Because the
-type of the parameter may depend on the variant it is located in, we define types to be a choice of primitive types. The typechecking of the Resource DSL is further discussed
-in Section \ref{sec:typecheck}.
+type of the parameter may depend on the variant it is located in, we define types to be a choice of primitive types. Typechecking is currently handled dynamically at runtime,
+although in the future we would like to potentially implement static typechecking for the language.
 
 \begin{lstlisting}
 data PType = TUnit | TBool | TInt | TFloat | TSymbol
@@ -1303,6 +1285,7 @@ with the result of the function. Checks take a unary function over the value of 
 success and \prog{False} indicating failure. When a check fails, an error is thrown, with an error message indicating what check failed.
 In this way, checks allow for a user to specify conditions or requirements that must hold for a particular resource.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}
 data Effect
      = Create (V Expr)
@@ -1310,6 +1293,7 @@ data Effect
      | Modify Fun
      | Delete
 \end{lstlisting}
+\end{minipage}
 
 \subsection{Statements}
 
@@ -1330,6 +1314,7 @@ efficient implementation of variational linked lists. A segment list is a list o
 plain lists or a choice between segment lists. Therefore, we define our blocks to be segment lists of
 statements.
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}
 data Segment a = Elems [a] | Split BExpr (SegList a) (SegList a)
 type SegList a = [Segment a]
@@ -1343,31 +1328,32 @@ data Stmt
      | Let Var (V Expr) Block
      | Load (V Expr) [V Expr]
 \end{lstlisting}
+\end{minipage}
 
 \subsection{Models and Profiles}
 
-Programs in the resource DSL are organized into \emph{Models} and \emph{Profiles}. Both take a list of
+Programs in the resource DSL are organized into \emph{models} and \emph{profiles}. Both take a list of
 initial parameters as input, which are converted into variables when evaluating the body of the program. Models are more straightforward to define,
-as their body is simply a statement block. By contrast, a Profile body is a direct mapping from resource paths to variational lists of effects. Profiles
-therefore do not support any of the control structures available to Models. Viewed another way, Profiles are Models that are restricted to \prog{In}
-and \prog{Do} statements. In fact, the Resource DSL provides a utility function \prog{toProfile} that automatically converts a Model to a Profile provided
-that the Model's body only contains \prog{In} and \prog{Do} statements.
+as their body is simply a statement block. By contrast, a profile body is a direct mapping from resource paths to variational lists of effects. Profiles
+therefore do not support any of the control structures available to models. Viewed another way, profiles are models that are restricted to \prog{In}
+and \prog{Do} statements. In fact, the Resource DSL provides a utility function \prog{toProfile} that automatically converts a model to a profile provided
+that the model's body only contains \prog{In} and \prog{Do} statements.
 
 \begin{lstlisting}
 data Profile = Profile [Param] (Map Path (SegList Effect))
 data Model = Model [Param] Block
 \end{lstlisting}
 
-One might ask why include Profiles at all if they are strictly a subset of Models? The answer is that, where possible, Profiles
-are to be preferred over Models because they are declarative definitions of resource specifications. Declarative Profiles
+One might ask why include profiles at all if they are strictly a subset of models? The answer is that, where possible, profiles
+are to be preferred over models because they are declarative definitions of resource specifications. Declarative Profiles
 are much easier to compose and reason about in comparison to imperative Models. Certain parts of the Resource DSL
-even go so far as to require Profiles, such as the specification of mission requirements, which should only ever be made up
+even go so far as to require profiles, such as the specification of mission requirements, which should only ever be made up
 of \prog{Check} effects. Models should only be used where necessary, which typically means resource configurations that are
 sensitive to the order in which effects are carried out or that require runtime decision making enabled through control structures.
 
-The execution environment maintains a dictionary of Profiles and Models. This is used to lookup the corresponding Profile or
-Model when a call to the \prog{Load} command is made. In this way users can organize their programs via subroutines that are
-called from a parent Model.
+The execution environment maintains a dictionary of profiles and models. This is used to lookup the corresponding profile or
+model when a call to the \prog{Load} command is made. In this way users can organize their programs via subroutines that are
+called from a parent model.
 
 
 \section{Execution} 
@@ -1386,9 +1372,9 @@ how to successfully integrate variation into a monadic approach to effect handli
 
 \subsection{Uncooperative Monads}
 
-Our first thought was simply to integrate the monad for formula trees into an existing Reader-State-Exception transformer stack by
+Our first thought was simply to integrate the monad for formula trees into an existing reader-state-exception transformer stack by
 creating a monad transformer for formula trees.
-After all, we have an existing monad instance for formula trees. This would provide the benefit of easily integrating choices in the highly
+After all, we already have an existing monad instance for formula trees. This would provide the benefit of easily integrating choices in the highly
 composable pattern that is the hallmark of monad transformers. As our work on VIMP shows, this would have never succeeded.
 Adding the monad instance for formula trees to the stack would not provide a variational context, or any other of the elements
 necessary to support side effects in a variational setting.
@@ -1408,9 +1394,10 @@ is possible to keep the existing monad transformers as long as the proper care i
 describes our custom monadic handler for dealing with variation generically in the Resource DSL.
 
 \subsection{The Evaluation Monad}
+\label{sec:evalmonad}
 
 Rather than extending our monad transformer stack to handle variation, we simply retain the same monad transformer stack
-and add a special handler for dealing with variational values. We add the variational context to the reader context, and the error
+and add a special handler for dealing with variational values. We add the variational context to the reader context and the error
 context to the state context. Unlike VIMP, we do not have a method for catching exceptions in the Resource DSL, so we have
 no need for a stack to roll back errors. Instead, the error context is made up of a condition that indicates which variants are in error
 and a single variational error value that contains all of the errors encountered. We provide the full definition of the monad transformer
@@ -1445,12 +1432,12 @@ type EvalM a = ExceptT Mask (StateT StateCtx (Reader Context)) a
 From here, we can begin to define a monad instance for handling variational values.
 Because it makes generically handling errors easier, we wrap all values in a \prog{Maybe},
 so that variational values in the Resource DSL all have the form \prog{V (Maybe a)}. This
-allows us to return a default value from alternatives that are in an error state with minimal
+allows us to return a default value from alternatives that are in an error state while introducing minimal
 computational overhead.
 
 We define a function \prog{vBind} that is analogous to the monadic bind operation, but for
 the type \prog{MonadEval m => m (V (Maybe a))} (Figure \ref{fig:vbind}). As Haskell does not allow us to write monad instances for this
-type, we define it as a standalone function. Of note is that vbind demonstrates the sort of flag-based exception handling optimization
+type, we define it as a standalone function. Of note is that \prog{vBind} demonstrates the flag-based exception handling optimization
 described in \ref{sec:varexcept}.
 
 \begin{figure}
@@ -1504,6 +1491,8 @@ To resolve the problem of Haskell not permitting a monad definition for the type
 it in a newtype \prog{VM m a} and define the monad instance for this type, with the constraint that \prog{m} implements \prog{MonadEval}:
 
 \begin{lstlisting}
+newtype VM m a = VM { unVM :: (m (VOpt a)) }
+
 instance (MonadEval m) => Functor (VM m) where
   fmap = liftM
 
@@ -1518,7 +1507,7 @@ instance (MonadEval m) => Monad (VM m) where
   
 \subsection{Throwing Exceptions}
 
-Throwing exceptions is handled by the function \prog{verror}, which updates the error context and the error value before
+Throwing exceptions is handled by the function \prog{vError}, which updates the error context and the error value before
 throwing an exception for the current variant:
 
 \begin{lstlisting}
@@ -1536,11 +1525,15 @@ Just like with VIMP, all interaction with the resource environment occurs within
 from the current reader monad context.
 Additionally, the Resource DSL places requirements that attempting to access or modify a resource that does not exist,
 or create a resource at a path in which one already exists, results in a thrown exception. For brevity, we only present the
-variational lookup operation for the resource environment, omitting the implementations for modification, deletion, and creation.
-Note that \prog{vHandleUnit}, here omitted, is similar to \prog{vHandle} except for the type \prog{m ()} rather than \prog{m (V (Maybe a))}:
+variational lookup operation in Figure \ref{fig:vLookup} for the resource environment, omitting the implementations for modification, deletion, and creation.
+Note that \prog{vHandleUnit}, here omitted, is similar to \prog{vHandle} except for the type \prog{m ()} rather than \prog{m (V (Maybe a))}.
 
+\begin{figure}
 \begin{lstlisting}
-vLookup' :: (MonadEval m, Ord k) => k -> Map k (V (Maybe v)) -> m (V (Maybe v))
+vLookup' :: (MonadEval m, Ord k) =>
+    k ->
+    Map k (V (Maybe v)) ->
+    m (V (Maybe v))
 vLookup' k env
     | Just v <- lookup k env = do
       c <- getVCtx
@@ -1552,19 +1545,26 @@ checkExists e (One Nothing) = vError e
 checkExists _ (One (Just _)) = return ()
 checkExists e (Chc c l r) = vHandleUnit c (checkExists e) l r
 
-vLookup :: (MonadEval m, Ord k) => Error -> k -> Map k (V (Maybe v)) -> m (V (Maybe v))
+vLookup :: (MonadEval m, Ord k) =>
+    Error ->
+    k ->
+    Map k (V (Maybe v)) ->
+    m (V (Maybe v))
 vLookup e k env = do
   v <- vLookup' k env
   checkExists e v
   return v
 \end{lstlisting}
+\caption{Implemenation of variational lookup}
+\label{fig:vLookup}
+\end{figure}
 
 \section{Evaluation and Use Cases}
 
 We implemented a full variational interpreter for the Resource DSL. Users provide a main application
-Model, an initial resource environment, mission requirements in the form of a Profile of \prog{Check}
-commands, a dictionary of available Profiles and Models, and initial parameters to the application Model.
-The interpreter runs the main application Model and then checks it against the mission requirements. 
+model, an initial resource environment, mission requirements in the form of a profile of \prog{Check}
+commands, a dictionary of available profiles and models, and initial parameters to the application model.
+The interpreter runs the main application model and then checks it against the mission requirements. 
 As outputs it produces the final variational resource environment, the error context, and the error value.
 All successful configurations should result in a variant that is not present in the error context. For unsuccessful
 configurations, selecting or configuring the variational error value produces an appropriate error message
@@ -1577,7 +1577,8 @@ are given the option of performing selection or configuration prior to execution
 eliminate configurations that they are not interested in, increasing efficiency in cases where certain
 configurations can be ruled out ahead of time. Keeping track of the error context allows us to use this
 value to support queries where a user supplies a boolean formula representing a configuration that they
-are interested in and the query returns whether that condition has any successful configurations.
+are interested in and the query returns whether that condition has any successful configurations, including
+a sample list of possible configurations generated by the built-in SAT solver.
 
 Our DSL has been tested against three example problems as part of its evaluation. The first test scenario
 concerned determining correct specification of resource environments that depend on location-based data,
@@ -1588,8 +1589,8 @@ protocols provided by different available libraries.
 
 All of these test scenarios demonstrated the utility of a fully variational model of execution, but the final test scenario in particular
 provided an interesting test case. We were able to encode each cryptographic cipher, mode, keysize, and padding as a distinct
-dimension, along with the various provider libraries. This allowed for our variational interpreter to potentially check all possible
-configurations at once. This also meant that if a user were only interested in a particular subset of features, such as only AES
+dimension, along with the various libraries that provide this functionality. This allowed for our variational interpreter to potentially check all possible
+cryptographic configurations of server and client at once. This also meant that if a user were only interested in a particular subset of features, such as only AES
 encryption with CBC mode, they could simply preconfigure the program according to those specifications, avoiding unnecessary
 computation.
 
