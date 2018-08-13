@@ -268,7 +268,7 @@ calculus \cite{ericthesis,erwig2011choice}. The fundamental unit of the choice c
 the \emph{choice}, which is a set of values called \emph{alternatives}.
 There are many data structures that can be used to model
 variational values, but for our purposes we utilize a data structure we refer
-to as a formula tree \cite{walkingshaw2014projectional,walkingshaw2014variational}.
+to as a formula tree \cite{walkingshaw2014variational,walkingshaw2014projectional}.
 Formula trees represent the set of alternatives as a tree of choices, with concrete
 values at the leaves of the tree. Each node of the tree is tagged with a formula from a boolean
 algebra consisting of boolean literals, variables, negation, conjunction, and disjunction. We call individual
@@ -442,6 +442,7 @@ side-effect free evaluation context is a fairly straightforward exercise before 
 difficult problem of variational execution with side effects.
 
 \section{Pure variational execution}
+\label{sec:purevar}
 
 If our target language has no side effects then
 our task is comparatively easy. We begin by considering a simple arithmetic expression language
@@ -859,6 +860,7 @@ We utilize the selection function when performing variable lookup using a variat
 relate the result of variational execution back to individual variants, a process which we detail in Section \ref{sec:bigvimp}.
 
 \section{Variational Context and Variational Store}
+\label{sec:vcvs}
 
 When describing the issues involved in the interaction between mutable state and variation in Section \ref{sec:mutst}, we noted the need for (1) maintaining a variational context
 during execution and (2) using this variational context when interacting with the variable store. This is a solution first discovered by \cite{varwhile} in their work on a
@@ -1037,7 +1039,7 @@ This technique was also originally discovered in \cite{varwhile}.  Figure \ref{f
 Finally we are prepared to present the big-step operational semantics for VIMP. Figures \ref{fig:h} and \ref{fig:vimpstmt} define the big-step semantics for VIMP expressions and
 statements, respectively.
 
-The judgments for variational expressions require a triple of the current variational context, the variable store, and the expression, producing a variational integer or boolean.
+The judgments for variational expressions require a triple of the current variational context (which has been merged with the error context at the statement level), the variable store, and the expression, producing a variational integer or boolean.
 The variational context is used as an argument to perform a lookup in the variable store whenever a variable reference is countered. It is also used to check when entering
 a new variant via a choice that the configuration is satisfiable. Because exceptions cannot be thrown at the expression level we do not need to incorporate an error context or
 perform satisfiability checks before each expression. We utilize the standard applicative functor lifting functions, $\mathit{liftA}$ and $\mathit{liftA2}$ to support embedding
@@ -1097,12 +1099,68 @@ S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
 \caption{Big-step semantics of Variational IMP expressions (continued)}
 \end{figure}
 
+The rules \textsc{VA-Num}, \textsc{VA-Add}, \textsc{VB-Bool}, \textsc{VB-Not}, \textsc{VB-And}, and \textsc{VB-Less} are
+fairly straightforward extensions of their non-variational counterparts. We simply lift values and operations into the applicative
+functor for formula trees as in Section \ref{sec:purevar}. \textsc{VA-Ref} is the only rule that interacts with the variable store,
+performing variational lookup using the variational context as described in Section \ref{sec:vcvs}. Finally, we have rules for 
+handling choices. \textsc{VA-Chc1} and \textsc{VB-Chc1} deal with the case in which both alternatives are satisfiable given
+the current variational context, executing both alternatives and placing the result values back into a choice with the same
+condition as the expression. \textsc{VA-Chc2} and \textsc{VB-Chc2} handle the case where the left alternative is unsatisfiable
+given the current variational context. This means we can safely eliminate the choice and replace it with the result of evaluating the right alternative.
+\textsc{VA-Chc3} and \textsc{VB-Chc3} handle the same case but for when the right alternative is unsatisfiable. There is no need for a rule for when
+both variants are unsatisfiable, as such a case should be prevented at the statement level.
+
 
 The semantics of VIMP statements is slightly more complex when compared with expressions. First, we develop two separate
 judgment forms $\Downarrow_V$ and $\Downarrow_{VS}$. $\Downarrow_V$ judgments check whether the current context is satisfiable
 before executing the statement. $\Downarrow_{VS}$ judgments evaluate a statement given that it is in a satisfiable context. In this sense, $\Downarrow_V$
 can be seen as a wrapper ensuring satisfiability of contexts before proceeding with evaluation. Both judgments take a 4-tuple of the current variational context,
 the variable store, the current error context, and the statement to evaluate, and produce an updated state and error context.
+
+\textsc{V-Unsat} expresses the notion that if the current variational context combined with the error context is unsatisfiable, then the statement should
+not be executed and the execution state should not change. \textsc{V-Sat} confirms that a the current variational context combined with the error context
+is satisfiable and then evaluates the statement with the appropriate $\Downarrow_{VS}$ rule.
+
+\textsc{VS-Skip} is self-explanatory. \textsc{VS-Assn} assigns a variable to the result of evaluating the given variational arithmetic expression.
+The store is updated according to the variational update operation defined in \ref{sec:vcvs}, taking the current variational context as an additional argument.
+\textsc{VS-Seq} simply sequences the execution of two statements.
+
+For control structures, first we have the rule \textsc{VS-If}. First we evaluate the conditional expression $e$ to a variational boolean value $\bar{b}$.
+We then use the functions $\mathit{whenTrue}$ and $\mathit{whenFalse}$ (Section \ref{sec:control}) to extract the variational contexts under
+which $\bar{b}$ is $\CCkeyw{true}$ or $\CCkeyw{false}$, respectively. In the case that $\bar{b}$ is $\CCkeyw{false}$ in all variants, $\mathit{whenTrue}$
+returns the context value $\CCkeyw{false}$ (the same holds for $\CCkeyw{true}$ and $\mathit{whenFalse}$). We evaluate the $\CCkeyw{then}$
+statement under the current variational context combined with the value returned by $\mathit{whenTrue}$, and the $\CCkeyw{else}$ statement under
+the current variational context combined with the value returned by $\mathit{whenFalse}$. Because the $\mathit{whenTrue}$ and $\mathit{whenFalse}$
+functions return $\CCkeyw{false}$ when there are no variants that satisfy their condition, the combined variational context is unsatisfiable and will be
+caught by the rule \textsc{V-Unsat}, resulting in an unchanged program state. Otherwise, these branches are evaluated under the variational context
+that represents all variants where they are reachable.
+
+\textsc{VS-While} operates on similar principles to \textsc{VS-If}, using $\mathit{whenTrue}$ to extract the context under which the value
+returned by evaluating the condition is $\CCkeyw{true}$ and then evaluating the $\CCkeyw{do}$ statement. We then continue execution
+by reevaluating the $\CCkeyw{while}$ statement with the current variational context combined with the context value returned by $\mathit{whenTrue}$
+and with the updated variable store and error context produced by the $\CCkeyw{do}$ statement.
+For terminating loops, the context
+returned by $\mathit{whenTrue}$ should grow successively smaller until no variants are $\CCkeyw{true}$. At this point, the variational context will be
+unsatisfiable and execution on the loop will be halted by the \textsc{V-Unsat} rule. It should be noted that one consequence of allowing possibly infinite
+loops in a variational language is that if one variant has an infinite loop then execution on any other variant cannot proceed.
+
+\textsc{VS-Throw} evaluates its variational arithmetic expression to a variational integer error code and adds that value and the variational context
+in which the error was produced to the the top frame of the error stack. \textsc{VS-Try} handles the case where the $\CCkeyw{try}$ block does not throw
+any errors. It first pushes an empty frame onto the top of the error stack, evaluates the $\CCkeyw{try}$ block statement, and finally checks to see if
+the top frame of the stack remains empty, signaling that no exceptions were thrown in the $\CCkeyw{try}$ block. In this case we can proceed without evaluating the $\CCkeyw{catch}$ block.
+
+\textsc{VS-Catch} handles the case where a $\CCkeyw{try}$ block does throw an exception. Like \textsc{VS-Try}, it pushes an empty frame onto the top of the error
+stack, but in this case, the error frame is nonempty after evaluation of the $\CCkeyw{try}$ block, meaning that at least one variant has thrown an exception.
+It extracts a context value and variational integer representing the all error codes thrown via the $\mathit{catchCtx}$ and $\mathit{extract}$ functions, respectively (see
+Section \ref{sec:varexcept}). We then update the variable store at the supplied variable name, using the values returned by $\mathit{catchCtx}$ and $\mathit{extract}$
+and as the variational context and variational value arguments to the variational update operation. In this way, we extend the variable environment with the variational
+error code value but only for the variants that threw an exception within the $\CCkeyw{try}$ block. With the error code information now placed in the variable store,
+we execute the $\CCkeyw{catch}$ statement in the variational context returned by $\mathit{catchCtx}$.
+
+Finally, \textsc{VS-Chc} handles choices at the statement level. The left alternative is evaluated under the current variational context combined with the condition of
+the choice, and the right alternative is evaluated under the current variational context combined with the negation of the condition.
+We can safely thread the resulting state of evaluating the left alternative to the right alternative without any concerns, because the variation-preservation property
+does not permit execution in one condition to affect its negation.
 
 \begin{figure}
 \begin{lstlisting}
@@ -1139,12 +1197,12 @@ values until we find one that has a condition that evaluates to \prog{True} unde
 \def \BigVSat {\infer [V-Sat] {\mathit{sat}(\gc) \\ (C,S,E,s) \Downarrow_{VS} (S',E')} {(C,S,E,s) \Downarrow_{V} (S',E')}}
 \def \BigVSkip {\infer[VS-Skip] { } {(C,S,E,\CCkeyw{skip}) \Downarrow_{VS} (S,E)}}
 \def \BigVAssn {\infer[VS-Assn] {(\gc,S,a) \Downarrow_{VA} \bar{n}} {(C,S,E,x \coloneqq a) \Downarrow_{VS} (S[(\gc,x) \rightarrow \bar{n}],E)}}
-\def \BigVSeq {\infer [VS-Seq] {(C,S,E,s) \Downarrow_{V} (S',E') \\ (C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,s\ ;\ s') \Downarrow_{VS} (S'',E'')}}
+\def \BigVSeq {\infer [VS-Seq] {(C,S,E,s) \Downarrow_{V} (S',E') \\ (C,S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,s\ ;\ s') \Downarrow_{VS} (S'',E'')}}
 \def \BigVIf {\infer [VS-If] {(\gc,S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \mathit{whenTrue}(\bar{b}),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenFalse}(\bar{b}),S',E') \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_{VS} (S'',E'')}}
 \def \BigVWhile {\infer [VS-While] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \mathit{whenTrue}(\bar{b}),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenTrue}(\bar{b}),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
 \def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{l:E},S,a) \Downarrow_{VA} \bar{n}} {(C,S,l:E,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,\bar{n}):l):E)}}
 \def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S',E)}}
-\def \BigVCatch {\infer [VS-Catch] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\mathit{catchCtx}(C,l),S'[(\GetCtx{C}{E},x) \rightarrow \mathit{extract}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S'',E')}}
+\def \BigVCatch {\inferrule*[lab=VS-Catch,right={$\mathit{nonempty}\ l$}] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\mathit{catchCtx}(C,l),S'[(\GetCtx{\mathit{catchCtx}(C,l)}{E},x) \rightarrow \mathit{extract}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S'',E')}}
 \def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
 
 \begin{figure}[H]
@@ -1440,6 +1498,24 @@ the type \prog{MonadEval m => m (V (Maybe a))} (Figure \ref{fig:vbind}). As Hask
 type, we define it as a standalone function. Of note is that \prog{vBind} demonstrates the flag-based exception handling optimization
 described in \ref{sec:varexcept}.
 
+\prog{vBind} employs several helper functions. \prog{vMove} takes the condition of a choice and an action in the evaluation monad representing the
+computation to be carried out in evaluating a single alternative of a choice. It retrieves the current variational context and error context,
+combines them with the condition argument,
+and checks if the combined context is unsatisfiable. If it is unsatisfiable, there is no need to evaluate the action, and instead an error is
+thrown for the current variant, which will be caught by the original choice. Otherwise, it evaluates the action in the context of
+the variational context extended by the condition argument.
+
+\prog{vHandle} takes the condition of the choice and monadic actions for both alternatives. It calls \prog{vMove} for each alternative.
+It then catches any exceptions thrown in the alternatives, either by \prog{vMove} before execution of the action or during execution of the action
+itself. If both alternatives threw errors, the error is propagated by the choice, as in the optimization detailed in \ref{sec:varexcept}. Otherwise,
+it suppresses the exceptions thrown by single alternatives and replaces them with a placeholder \prog{Nothing} value.
+
+\prog{vBind} handles the variational value itself. First it extracts the variational value from within the evaluation monad. Then, it handles
+the value based on its case. If the value is \prog{One Nothing}, it simply returns \prog{One Nothing} in a manner analogous to the behavior
+of the plain \prog{Maybe} monad. In the case of a variational value that is not a choice or \prog{Nothing}, we simply apply the function
+passed to \prog{vBind} to the underlying value. Finally, in the case of a choice, we wrap each alternative in the provided action
+and pass execution to the \prog{vHandle} helper function.
+
 \begin{figure}
 \begin{lstlisting}
 vMove :: MonadEval m => Cond -> m a -> m a
@@ -1447,17 +1523,17 @@ vMove c m = do
   vctx <- getVCtx
   e <- getErrCtx
   let c' = vctx :&&: c
-  if (unsat (vctx :&&: Not e)) then
+  if (unsat (c' :&&: Not e)) then
     throwError (One Nothing)
   else
     local ($\lambda$(Ctx p m dict _) -> Ctx p m dict c') m
 
-vHandle' :: MonadEval m =>
+vHandle :: MonadEval m =>
     Cond -> 
     m (V (Maybe a)) -> 
     m (V (Maybe a)) -> 
     m (V (Maybe a))
-vHandle' c l r = do
+vHandle c l r = do
   let r' = vMove (Not c) r
   let l' = vMove c l
   l'' <- l' `catchError` ($\lambda$e -> do
@@ -1466,22 +1542,15 @@ vHandle' c l r = do
   r'' <- r' `catchError` ($\lambda$_ -> return (One Nothing))
   return (Chc c l'' r'')
 
-vHandle :: MonadEval m =>
-    Cond -> 
-    (V (Maybe a) ->
-    m (V (Maybe b))) ->
-    V (Maybe a) ->
-    V (Maybe a) ->
-    m (V (Maybe b))
-vHandle c f l r = vHandle' c (f l) (f r)
-
 vBind :: MonadEval m => m (V (Maybe a)) -> (a -> m (V (Maybe b))) -> m (V (Maybe b))
 vBind v f = do
   v' <- v
   case v' of
     (One Nothing) -> return (One Nothing)
     (One (Just a)) -> f a
-    (Chc c l r) -> vHandle c ($\lambda$v -> vBind (return v) f) l r
+    (Chc c l r) -> let
+       f' v = vBind (return v) f
+    in vHandle c (f l) (f r)
 \end{lstlisting}
 \caption{Definition of vBind}
 \label{fig:vbind}
@@ -1490,6 +1559,7 @@ vBind v f = do
 To resolve the problem of Haskell not permitting a monad definition for the type of \prog{vBind}, we wrap
 it in a newtype \prog{VM m a} and define the monad instance for this type, with the constraint that \prog{m} implements \prog{MonadEval}:
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}
 newtype VM m a = VM { unVM :: (m (VOpt a)) }
 
@@ -1504,11 +1574,14 @@ instance (MonadEval m) => Monad (VM m) where
   return = VM . return . One . Just
   v >>= f = VM ~ vBind (unVM v) (unVM . f)
   \end{lstlisting}
+\end{minipage}
   
 \subsection{Throwing Exceptions}
 
-Throwing exceptions is handled by the function \prog{vError}, which updates the error context and the error value before
-throwing an exception for the current variant:
+Throwing exceptions is handled by the function \prog{vError}. \prog{vError} retrieves the current variational context
+from the reader context, updates the error context in the state to be the disjunction of the current error context and the variational context,
+updates the variational error value in the state with the \prog{Error} value just thrown, and finally throws an error in the exception monad to
+halt execution for the current variant.
 
 \begin{lstlisting}
 vError :: MonadEval m => Error -> m a
@@ -1526,6 +1599,9 @@ from the current reader monad context.
 Additionally, the Resource DSL places requirements that attempting to access or modify a resource that does not exist,
 or create a resource at a path in which one already exists, results in a thrown exception. For brevity, we only present the
 variational lookup operation in Figure \ref{fig:vLookup} for the resource environment, omitting the implementations for modification, deletion, and creation.
+The helper function \prog{vLookup'} performs lookup on the variational map by selecting on the value at the given key using the current variational
+context. The resulting value is then passed to the \prog{checkExists} helper function, which throws a variational error for variants where the
+requested value does not exist.
 Note that \prog{vHandleUnit}, here omitted, is similar to \prog{vHandle} except for the type \prog{m ()} rather than \prog{m (V (Maybe a))}.
 
 \begin{figure}
