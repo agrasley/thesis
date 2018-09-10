@@ -80,7 +80,7 @@
 \depttype{School}
 \depthead{Director}
 \major{Computer Science}
-\advisor{Eric Walkingshaw}
+\advisor{Eric T. Walkingshaw}
 \submitdate{August 27, 2018}
 \commencementyear{2019}
 \abstract{
@@ -174,7 +174,7 @@ program is run multiple times on related inputs, but may also be viewed as runni
 Serial execution of the same program over different inputs can be viewed in the abstract
 as equivalent to a single execution across a value representing all inputs and producing a similar value representing all outputs.
 
-While seemingly distinct, there is considerable overlap between these kinds of variation. Tooling or static analysis that deals with
+There is considerable overlap between these kinds of variation. Tooling or static analysis that deals with
 statically resolved variation often encounters the same problems and employs the same techniques to solve them
 that are found in variational execution. Chief among these issues is that brute-force techniques for dealing with variation quickly become infeasible as the
 number of features grows. For a variational software system with $n$ features, the number of unique variants produced is $2^n$. Similarly, the naive approach
@@ -193,7 +193,7 @@ The work in this thesis was primarily motivated by our work in defining a DSL fo
 systems. The Resource DSL allows users to write programs that assert certain conditions of a successful resource configuration for a project.
 Resource requirement specifications are an ideal setting for the use of variational execution. For many modern software systems there are a
 whole host of configuration options available. Using a plain, non-variational model of execution a user must individually check each configuration that they wish to
-test. As discussed above, if a user wishes to check an entire configuration it quickly becomes infeasible due to the exponential explosion of the number of times they must
+test. As discussed above, if a user wishes to check all configurations it quickly becomes infeasible due to the exponential explosion of the number of times they must
 rerun the checker. By contrast, the Resource DSL due to its fully variational model of execution is capable of exploiting the common computations shared among many different
 possible configurations, leading to efficiency gains. In addition to the potential efficiency gains, directly modeling variation in our language allows for easier reasoning about
 large configuration spaces. For instance, users can easily preconfigure a variational program to only run for certain features that they are interested in. Users can also more easily
@@ -214,7 +214,7 @@ full-featured language like our Resource DSL.
 This thesis provides two primary contributions: (1) a formal semantics for variational imperative languages
 and (2) a description of our design of the Resource DSL. These are of course intrinsically linked, where
 the work on formalizing the semantics of variational imperative languages serves as the foundation for
-a specific variational imperative language, namely the Resource DSL.
+our work on the Resource DSL.
 
 Chapter 2 (\emph{Background}) provides an overview of the choice calculus, which provides a formal
 model for reasoning about variation. It describes one way of implementing variational values in the
@@ -228,7 +228,7 @@ a language without side effects. Then we show why this approach is inadequate
 for dealing with imperative languages with side effects. We examine how both
 mutable state and exceptions can pose problems in a variational setting.
 
-Chapter 4 (\emph{IMP}) describes the imperative language IMP.
+Chapter 4 (\emph{IMP}) describes the imperative language IMP \cite{winskel1993formal,nipkow1998winskel,nipkow2014concrete}.
 We use IMP because its simplicity allows for the definition of the key
 interaction between variation and side effects without unnecessary linguistic
 clutter. We set out the syntax of IMP which we have extended to include catchable
@@ -309,8 +309,8 @@ have been eliminated, yielding a plain value without choices. We call these resu
 \emph{variants}. We define a function \emph{conf} which takes a
 \emph{configuration} and a variational value and produces a variant. Under the view of dimensions as representing distinct features, a configuration for a formula tree gives
 a boolean assignment for each dimension of the variational value being configured.
-A simple way to do this is to define a configuration as a list of the features that are present, with all
-other features assumed to be absent. In other words, configurations are a list of variables that should
+A simple way to do this is to define a configuration as a set of the features that are present, with all
+other features assumed to be absent. In other words, configurations are a set of variables that should
 evaluate to true, with all other variables evaluating to false. Configuring a formula tree is then simply evaluating
 each condition given the variable assignment. If the condition evaluates to true, then the left variant
 is chosen, otherwise the right variant is chosen.
@@ -324,7 +324,8 @@ more relevant when we present our work on variational imperative programming lat
 Chapter \ref{ch:vimp}. Despite these advantages, formulas incur some cost by introducing boolean
 satisfiability problems into many common operations, which is an NP-complete problem. However, thanks to improvements in the
 efficiency of modern SAT solvers, often the worst-case NP-complete performance of these satisfiability
-problems can be avoided.
+problems can be avoided. Several studies have shown that the types of boolean formulas typically encountered in
+variational software are efficiently solved by modern SAT solvers \cite{liebig2013scalable,Mendonca:2009:SAF:1753235.1753267}.
 
 \section{Implementation of Formula Trees}
 \label{sec:genvimpl}
@@ -384,7 +385,7 @@ apparent further on in this work during the discussion of pure, side-effect free
 The choice calculus enables several desirable properties for variational programs.
 The first property that is possible to implement through the choice calculus \emph{sharing}. A naive approach to executing a variational program is simply to
 configure the variational program in order to produce each variant and run them all sequentially.
-For a program with $n$ dimensions this results in $2^n$ variants that must be executed. Crucially,
+For a program with $n$ dimensions this results in $2^n$ variants that must be executed in the worst case. Crucially,
 the naive approach must recompute any common elements shared between variants. Embedding
 choices in our program, combined with a variability-aware model of execution allows us to exploit this
 inherent sharing by only computing shared components once, greatly improving the efficiency of
@@ -919,7 +920,7 @@ The variational values in the map must be of type \prog{Maybe v} in order to acc
 variational store is built on top of Haskell's \prog{Data.Map} library, but in theory any map data structure should suffice.
 
 In \prog{vlookup} we throw a runtime exception when a variable is undefined. Our semantics does not define the behavior of trying to access an undefined variable, but
-such cases are easily detected and prevented with a proper type system. Variational type systems have been studied extensively and readers seeking static guarantees
+such cases are easily detected and prevented by a type system. Variational type systems have been studied extensively and readers seeking static guarantees
 that undefined variable access is impossible are referred to those works \cite{kenner2010typechef,CEW12icfp,CEW14toplas}.
 
 The implementation of \prog{vupdate} that we present here, while adequate, has the potential for additional optimization. Currently \prog{vupdate} simply creates what amounts to a labeled list of variational values, where the variational context in which a variable was assigned is used as the label.
@@ -998,7 +999,7 @@ the execution of a statement can safely be skipped.
 
 This flag value has an interesting interaction with choices. We only wish for a choice statement to set its flag when all variants can safely be ignored. If there is a single variant that is still active, then a choice statement should not set its flag, in this way suppressing the flags of its children. When the flag is set from inside of
 a choice, there is a simple procedure to check if the choice should propagate or suppress the flag. If both alternatives are either unsatisfiable or have the flag set, then
-the parent choice should set its flag, indicating that execution is halted for all possible variants. In the Resource DSL, we implement this system via an error monad,
+the parent choice should set its flag, indicating that execution is halted for all possible variants. In the Resource DSL (Section \ref{sec:throwing}), we implement this system via an error monad,
 with errors serving as the flags and inserting catches for choices in order to inspect whether the parent should propagate the errors or suppress them.
 
 \section{Control Structures}
@@ -1025,8 +1026,8 @@ whenTrue (Chc c l r) = (c :&&: whenTrue l) :||: (Not c :&&: whenTrue r)
 
 whenFalse = Not . whenTrue
 \end{lstlisting}
-\label{fig:when}
 \caption{Control structure helper functions}
+\label{fig:when}
 \end{figure}
 
 For the second issue, we need a way to extract a condition that encompasses all variants where a variational boolean value is $\CCkeyw{true}$ or, in the case of $\CCkeyw{else}$ blocks,
@@ -1478,7 +1479,8 @@ data ReaderCtx = RCtx {
     vCtx :: Cond
 }
 
-type MonadEval m = (MonadError (V (Maybe Error)) m, MonadReader RCtx m, MonadState StateCtx m)
+type MonadEval m =
+  (MonadError (V (Maybe Error)) m, MonadReader RCtx m, MonadState StateCtx m)
 
 -- | A specific monad for running MonadEval computations
 type EvalM a = ExceptT Mask (StateT StateCtx (Reader Context)) a
@@ -1577,6 +1579,7 @@ instance (MonadEval m) => Monad (VM m) where
 \end{minipage}
   
 \subsection{Throwing Exceptions}
+\label{sec:throwing}
 
 Throwing exceptions is handled by the function \prog{vError}. \prog{vError} retrieves the current variational context
 from the reader context, updates the error context in the state to be the disjunction of the current error context and the variational context,
