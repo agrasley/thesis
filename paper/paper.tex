@@ -186,7 +186,7 @@ there are significant elements that are shared in common between variants. In st
 or classes that are shared between multiple variants. When analyzing such programs, significant portions of the analysis will be shared across many variants. In the case of variational execution often the same computations are performed across several variants.
 By exploiting these commonalities what previously seemed impossible often becomes quite efficient. Software systems analysis that takes advantage of variation
 in this way---commonly termed \emph{variationally-aware} analysis---has been developed across a number of areas, including typechecking, type inference, and
-testing \cite{kenner2010typechef,chen2014extending,thum2014classification}. In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
+testing \cite{kenner2010typechef,CEW14toplas,thum2014classification}. In turn, and often in support of such variationally-aware analysis tools, systems of variational execution have been developed for a number
 of languages, including PHP, Java, and Javascript \cite{varex,varexj,faceted}.
 
 The work in this thesis was primarily motivated by our work in defining a DSL for describing resource requirements in complex modern software
@@ -264,11 +264,11 @@ possible future areas of research that build on the contributions presented here
 \section{The choice calculus}
 
 In order to formally represent choices in our programs we employ the choice
-calculus \cite{ericthesis,erwig2011choice}. The fundamental unit of the choice calculus is
+calculus \cite{Walk13thesis,EW11tosem}. The fundamental unit of the choice calculus is
 the \emph{choice}, which is a set of values called \emph{alternatives}.
 There are many data structures that can be used to model
 variational values, but for our purposes we utilize a data structure we refer
-to as a formula tree \cite{walkingshaw2014variational,walkingshaw2014projectional}.
+to as a formula tree \cite{Walk14onward,WO14gpce}.
 Formula trees represent the set of alternatives as a tree of choices, with concrete
 values at the leaves of the tree. Each node of the tree is tagged with a formula from a boolean
 algebra consisting of boolean literals, variables, negation, conjunction, and disjunction. We call individual
@@ -318,7 +318,7 @@ is chosen, otherwise the right variant is chosen.
 Using boolean formulas as our tags provides several advantages. For example, we can simplify trees like
 $\tagtree{B}{1}{\tagtree{A}{1}{2}}$ to the more compact form $\tagtree{(B \vee A)}{1}{2}$. This is just
 one of a number of optimizations that are made possible by representing tags as boolean formulas
-\cite{walkingshaw2014projectional,hubbard2016formula}. Formula choices are also more convenient
+\cite{WO14gpce,HW16fosd}. Formula choices are also more convenient
 for maintaining a variational context during execution of a program, a fact that will become
 more relevant when we present our work on variational imperative programming later in
 Chapter \ref{ch:vimp}. Despite these advantages, formulas incur some cost by introducing boolean
@@ -398,8 +398,8 @@ language could then safely only compute that subexpression once.
 
 This sharing is enabled but not required by the choice calculus. It is up to the implementor to
 ensure that the maximum degree of sharing is achieved. Nevertheless, there are a number of
-strategies for systematically simplifying variational values \cite{ericthesis}. The use of formula
-trees permits additional simplification operations \cite{hubbard2016formula,walkingshaw2014projectional}.
+strategies for systematically simplifying variational values \cite{Walk13thesis}. The use of formula
+trees permits additional simplification operations \cite{HW16fosd,WO14gpce}.
 
 % correctness and the commuting diagram
 Another property of choices and variation that we are interested in is \emph{variation-preservation}. In order
@@ -410,7 +410,7 @@ Variation-preservation assures us that each variant is faithfully modeled by the
 
 Given a function $f : T \rightarrow U$ and its variational counterpart $g : V \rightarrow W$, we say that
 the function $g$ is variation-preserving if for some configuration $c$ the following equality holds:
-$\mathit{conf}\ c \circ g = f \circ \mathit{conf}\ c$ \cite{hubbard2016formula}. Put simply, configuring the result
+$\mathit{conf}\ c \circ g = f \circ \mathit{conf}\ c$ \cite{HW16fosd}. Put simply, configuring the result
 of passing a variational value to a variational function should be the same as pre-configuring the input
 and the function itself. This can be visualized as the following commuting diagram:
 
@@ -496,7 +496,7 @@ plain interpreter within the applicative functor for choices works well for any 
 and side-effect free. The only area of concern is associated with the use of data structures in the
 interpretation of the language, which often benefit from being replaced with custom variational data structures that
 provide greater sharing and efficiency. Recent work has explored the benefits of custom variational
-data structures for maps \cite{walkingshaw2014variational}, linked lists \cite{lists}, and stacks \cite{stacks}.
+data structures for maps \cite{Walk14onward}, linked lists \cite{lists}, and stacks \cite{MMWWK17vamos}.
 As such, exercising proper care in the selection and integration of variational data structures
 into a variational interpreter resolves this issue.
 
@@ -912,7 +912,7 @@ vupdate c k v vst = case lookup k vst of
 \label{fig:varmap}
 \end{figure}
 
-In Figure \ref{fig:varmap} we provide a sample implementation of a variational store based on the variational map data structure \cite{varwhile, walkingshaw2014variational}.
+In Figure \ref{fig:varmap} we provide a sample implementation of a variational store based on the variational map data structure \cite{varwhile, Walk14onward}.
 Variational maps are an efficient map data structure for storing variational values and are easily built using an existing non-variational map. The basic idea
 is that for a non-variational map of with values of type \prog{v}, a variational map uses the same underlying data structure but with values of type \prog{V (Maybe v)}.
 The variational values in the map must be of type \prog{Maybe v} in order to account for cases where a value is assigned in one variant but not in others. Our sample
@@ -920,13 +920,13 @@ variational store is built on top of Haskell's \prog{Data.Map} library, but in t
 
 In \prog{vlookup} we throw a runtime exception when a variable is undefined. Our semantics does not define the behavior of trying to access an undefined variable, but
 such cases are easily detected and prevented with a proper type system. Variational type systems have been studied extensively and readers seeking static guarantees
-that undefined variable access is impossible are referred to those works \cite{kenner2010typechef,chen2012error,chen2014extending}.
+that undefined variable access is impossible are referred to those works \cite{kenner2010typechef,CEW12icfp,CEW14toplas}.
 
 The implementation of \prog{vupdate} that we present here, while adequate, has the potential for additional optimization. Currently \prog{vupdate} simply creates what amounts to a labeled list of variational values, where the variational context in which a variable was assigned is used as the label.
 This means that in order to lookup a variational value in a context stored at the end of such a list of length $n$, we must first perform $n$ satisfiability checks.
 Because satisfiability checks have the potential to be expensive operations, we would like to reduce the need for them as much as possible.
 BDD solvers are built to solve these sorts of problems, but integrating them with variational values is a non-trivial task and is left as a subject for future research.
-Short of integrating a BDD solver, there are other optimization or simplification operations that could be performed \cite{ericthesis,hubbard2016formula}, but which to perform and how frequently
+Short of integrating a BDD solver, there are other optimization or simplification operations that could be performed \cite{Walk13thesis,HW16fosd}, but which to perform and how frequently
 is also a subject beyond the scope of the current work.
 
 In VIMP, each evaluation step requires the current variational context. In VIMP's expressions, the variational context is passed to the lookup operation for any
@@ -1680,7 +1680,7 @@ how to support catchable exceptions in a variational environment, which to our k
 In this chapter we compare our work to preceding work on variational execution, highlighting the development and implementation
 of several techniques utilized here.
 
-The first to develop a notion of variational execution were Erwig and Walkingshaw in their 2011 GTTSE tutorial \cite{erwig2013variation}.
+The first to develop a notion of variational execution were Erwig and Walkingshaw in their 2011 GTTSE tutorial \cite{EW11gttse}.
 While it does not address the interaction of side effects with variation, it set the stage for future research by developing the choice calculus,
 as well as the functor, applicative, and monad instances that we have made use of in this work.
 
@@ -1719,7 +1719,7 @@ as well as the functor, applicative, and monad instances that we have made use o
  is of more use when variationalizing a VM.
  
  Variational interpreters are not the only places where side effects and variation interact. For example, Chen, Erwig, and Walkingshaw's work
- on typing variational lambda calculus makes use of \emph{masks} that are similar to VIMP's error contexts \cite{chen2012error}. The central
+ on typing variational lambda calculus makes use of \emph{masks} that are similar to VIMP's error contexts \cite{CEW12icfp}. The central
  notion here is that when typechecking a variational program, it is desirable to continue typechecking variants that are not in an error state when
  an error is encountered in a separate variant.
 
@@ -1743,7 +1743,7 @@ This work has focused primarily on mutable state and exceptions. It is an area o
 of other types of effects with variation. In particular, it is unclear how variational programs that must somehow interact with
 the outside world through IO operations should be handled. It is likely that a variational language that supports IO would also
 need to be paired with variational constructs in the operating system itself, such as variational files and filesystems, variational
-databases, etc. There has already been some progress made in this area on the database front \cite{ataei2017variational,vldb}, but more work is necessary
+databases, etc. There has already been some progress made in this area on the database front \cite{ATW17dbpl,ATW18poly}, but more work is necessary
 with regards to how to integrate variational execution with such operating system entities.
 
 For the Resource DSL, we are interested in the possibilities that built-in support for SAT solving has for optimization.
@@ -1756,7 +1756,7 @@ ways of addressing resource configurations in which the order in which effects a
 way, which ultimately may not be possible.
 
 \cleardoublepage
-\bibliography{paper}
+\bibliography{paper,eric}
 \bibliographystyle{plain}
 
 \clearpage\flyleaf
