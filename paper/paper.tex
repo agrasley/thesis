@@ -204,7 +204,7 @@ the variational interpreter for the Resource DSL was accounting for side effects
 made up primarily of either operations that somehow modify a resource environment or assertions against the current state of that environment. For this reason, the
 Resource DSL is implemented as an imperative language, with side-effectful statements forming the basis of programs in the language. The interaction of side effects
 like mutable state and throwing exceptions with variation proved to be difficult to get right. Previous work on making imperative languages variational has developed a
-number of techniques to handle the interactions between side effects and variation. This thesis seeks to formalize these techniques using a sample big-step operational
+number of techniques to handle the interactions between side effects and variation. This thesis seeks to formalize these techniques using a big-step operational
 semantics for a simple imperative programming language. With the formal underpinnings thus established, we then turn to a discussion of how they are utilized in more
 full-featured language like our Resource DSL.
 
@@ -231,12 +231,12 @@ mutable state and exceptions can pose problems in a variational setting.
 Chapter 4 (\emph{IMP}) describes the imperative language IMP \cite{winskel1993formal,nipkow1998winskel,nipkow2014concrete}.
 We use IMP because its simplicity allows for the definition of the key
 interaction between variation and side effects without unnecessary linguistic
-clutter. We set out the syntax of IMP which we have extended to include catchable
+clutter. We set out the syntax of IMP, which we have extended to include catchable
 exceptions, as well as a big-step operational semantics for IMP. This allows us
 to have a useful point of comparison for our later work on variationalizing IMP.
 
 Chapter 5 (\emph{Variational IMP}) describes the process of adding explicit support
-for variation to the IMP language. We extend the syntax with choices, and then
+for variation to the IMP language. We extend the syntax with choices and then
 develop the necessary elements in order to define a big-step operational semantics.
 These elements include maintaining a variational context, a variational variable store,
 an error context, and special interactions with control structures. With these established
@@ -250,7 +250,7 @@ This provides a real-world example of an interpreter that implements the techniq
 in Chapter 5.
 
 Chapter 7 (\emph{Related Work}) provides an overview of existing approaches to
-variational imperative programming, and compares our contributions with the prior
+variational imperative programming and compares our contributions with the prior
 state of the art.
 
 Finally, Chapter 8 (\emph{Conclusion and Future Work}) discusses possible applications
@@ -383,7 +383,7 @@ apparent further on in this work during the discussion of pure, side-effect free
 
 % sharing is desirable. what is sharing?
 The choice calculus enables several desirable properties for variational programs.
-The first property that is possible to implement through the choice calculus \emph{sharing}. A naive approach to executing a variational program is simply to
+The first property that is enabled through the choice calculus is \emph{sharing}. A naive approach to executing a variational program is simply to
 configure the variational program in order to produce each variant and run them all sequentially.
 For a program with $n$ dimensions this results in $2^n$ variants that must be executed in the worst case. Crucially,
 the naive approach must recompute any common elements shared between variants. Embedding
@@ -445,7 +445,7 @@ difficult problem of variational execution with side effects.
 \section{Pure variational execution}
 \label{sec:purevar}
 
-If our target language has no side effects then
+If our target language has no side effects, then
 our task is comparatively easy. We begin by considering a simple arithmetic expression language
 defined by the following Haskell datatype:
 
@@ -528,7 +528,7 @@ language that supports basic control structures and mutable variable references:
 In a non-variational setting, we can reasonably expect the final state of the variables in this example
 to be either $\{x \Rightarrow 0,\ y \Rightarrow \CCkeyw{false}\}$ or
 $\{x \Rightarrow 1,\ y \Rightarrow \CCkeyw{true}\}$ depending on the value that
-\prog{getSecret()} returns. Now we consider the execution of the above example in a variational
+getSecret() returns. Now we consider the execution of the above example in a variational
 setting. Suppose that the call to \prog{getSecret}
 produces the variational value $\tagtree{A}{\CCkeyw{true}}{\CCkeyw{false}}$. We can view this as simply
 combining the two possible non-variational execution paths described above into a
@@ -581,7 +581,7 @@ Consider the following program:
 In a non-variational context, the behavior of this program should be clear.
 If the variable $y$ evaluates to $\CCkeyw{true}$, then an error is thrown with value
 $e$. At this point evaluation should stop, meaning that the variable $x$ is never
-assigned in the final statement, avoiding the costly computation of \prog{expensiveFn}. This effect of halting execution and
+assigned in the final statement, avoiding the costly computation of expensiveFn. This effect of halting execution and
 returning an error value is the essence of exceptions in non-variational settings.
 
 Now we consider the behavior of the same program in a variational context.
@@ -591,7 +591,7 @@ would evaluate the body of the $\CCkeyw{if}$ statement, while ignoring it otherw
 in the left alternative of $A$ we throw an exception, but otherwise we continue on to the
 final statement.
 
-Clearly maintaining the same behavior from the non-variational setting in the variational setting
+Clearly, maintaining the same behavior from the non-variational setting in the variational setting
 violates variation-preservation. If we halt execution whenever an exception is
 thrown in any variant, then we also stop the evaluation of variants that never encountered an error,
 as in our example for the case $\neg A$. Variation-preservation dictates that variants that never encountered
@@ -801,8 +801,8 @@ a generic formula tree implementation. While the end result should not depend on
 used, we felt that directly embedding choices led to cleaner semantic definitions.
 
 We also present the big-step operational semantics for VIMP expressions and statements. In the following sections we will discuss specific elements of these definitions.
-We begin by defining variational operations, such as configuration and selection as explained in Chapter \ref{ch:bg}. We then examine the need for maintaining a variational context during execution, especially in its relation to the variable store. We then turn to a discussion of
-catchable exceptions. We then discuss interacting with control structures. Finally, we present the formal big-step operational semantics for VIMP expressions and statements.
+We begin by defining variational operations, such as configuration and selection as explained in Chapter \ref{ch:bg}. We then examine the need for maintaining a variational context during execution, especially in its relation to the variable store. After, we turn to a discussion of
+catchable exceptions. Next we discuss interacting with control structures. Finally, we present the formal big-step operational semantics for VIMP expressions and statements.
 
 
 
@@ -864,6 +864,7 @@ relate the result of variational execution back to individual variants, a proces
 \label{sec:vcvs}
 
 When describing the issues involved in the interaction between mutable state and variation in Section \ref{sec:mutst}, we noted the need for (1) maintaining a variational context
+(a boolean formula or condition)
 during execution and (2) using this variational context when interacting with the variable store. This is a solution first discovered by \cite{varwhile} in their work on a
 variational model of execution for the \textsc{While} language.
 
@@ -915,15 +916,15 @@ vupdate c k v vst = case lookup k vst of
 
 In Figure \ref{fig:varmap} we provide a sample implementation of a variational store based on the variational map data structure \cite{varwhile, Walk14onward}.
 Variational maps are an efficient map data structure for storing variational values and are easily built using an existing non-variational map. The basic idea
-is that for a non-variational map of with values of type \prog{v}, a variational map uses the same underlying data structure but with values of type \prog{V (Maybe v)}.
+is that for a non-variational map of values of type \prog{v}, a variational map uses the same underlying data structure but with values of type \prog{V (Maybe v)}.
 The variational values in the map must be of type \prog{Maybe v} in order to account for cases where a value is assigned in one variant but not in others. Our sample
 variational store is built on top of Haskell's \prog{Data.Map} library, but in theory any map data structure should suffice.
 
 In \prog{vlookup} we throw a runtime exception when a variable is undefined. Our semantics does not define the behavior of trying to access an undefined variable, but
-such cases are easily detected and prevented by a type system. Variational type systems have been studied extensively and readers seeking static guarantees
+such cases are easily detected and prevented by a type system. Variational type systems have been studied extensively, and readers seeking static guarantees
 that undefined variable access is impossible are referred to those works \cite{kenner2010typechef,CEW12icfp,CEW14toplas}.
 
-The implementation of \prog{vupdate} that we present here, while adequate, has the potential for additional optimization. Currently \prog{vupdate} simply creates what amounts to a labeled list of variational values, where the variational context in which a variable was assigned is used as the label.
+The implementation of \prog{vupdate} that we present here, while adequate, has the potential for additional optimization. Currently, \prog{vupdate} simply creates what amounts to a labeled list of variational values, where the variational context in which a variable was assigned is used as the label.
 This means that in order to lookup a variational value in a context stored at the end of such a list of length $n$, we must first perform $n$ satisfiability checks.
 Because satisfiability checks have the potential to be expensive operations, we would like to reduce the need for them as much as possible.
 BDD solvers are built to solve these sorts of problems, but integrating them with variational values is a non-trivial task and is left as a subject for future research.
@@ -947,11 +948,11 @@ return this value. The variational
 context framework also easily supports preventing the continued execution of variants that are in an error state. We simply need to incorporate an error condition into our
 satisfiability checks such that the variational context is unsatisfiable for variants in an error state. Because an exception may have been thrown in the current variant, we extend
 our satisfiability checks to occur before executing each statement. This means that before beginning execution on a new statemtent we now check
-for (1) whether the configuration for the current varaint is even possible and (2) whether the variant is currently in error and should not be executed. The error condition can be easily derived
+for (1) whether the configuration for the current variant is even possible and (2) whether the variant is currently in error and should not be executed. The error condition can be easily derived
 by taking the disjunction of the variational contexts returned by all $\CCkeyw{throw}$ operations. To make entering an error context impossible we take the conjunction of
 the current variational context and the negation of the error context and check it for satisfiability before entering a new variant.
 
-Supporting catchable exceptions gives us several additional challenges. We need to be able to ``roll back" the error context to a previous state. This suggests that
+Supporting catchable exceptions gives us several additional challenges. We need to be able to ``roll back'' the error context to a previous state. This suggests that
 during execution the error context and corresponding values should be kept in a stack. When we enter a new $\CCkeyw{try}$ block we push an empty error frame onto
 the stack. All error values and their contexts thrown in the execution of the $\CCkeyw{try}$ block get added to the top of the stack. We pop the top frame of the stack when
 we reach the corresponding $\CCkeyw{catch}$ block. If we reach the $\CCkeyw{catch}$ handler with
@@ -1007,8 +1008,8 @@ with errors serving as the flags and inserting catches for choices in order to i
 
 Control structures are another aspect of VIMP where the interaction with variation plays a crucial role. IMP's control structures---$\CCkeyw{if \ldots then \ldots else}$ and $\CCkeyw{while \ldots do}$---conditionally execute statements based on the evaluation of a boolean expression. In VIMP, this presents two issues. First, any variation in the condition of a control structure
 necessarily affects the conditionally executed block. Second, a formula tree representing a variational boolean
-value may contain multiple distinct $\CCkeyw{true}$ or $\CCkeyw{false}$ values. With most other operations in VIMP such as addition or comparison we simply lift them into the applicative functor for formula trees.
-However, when interacting with control structures this approach seems sure to cause significant inefficiencies. The applicative functor simply unwraps each leaf value in the tree
+value may contain multiple distinct $\CCkeyw{true}$ or $\CCkeyw{false}$ values. As with most other operations in VIMP, such as addition or comparison, we simply lift them into the applicative functor for formula trees.
+However, when interacting with control structures this approach causes significant inefficiencies. The applicative functor simply unwraps each leaf value in the tree
 and continues execution. This might lead us to reevaluate the same conditional block repeatedly, only with different variational contexts. Any sharing between executions of this
 conditional block would be lost. 
 
@@ -1109,7 +1110,7 @@ the current variational context, executing both alternatives and placing the res
 condition as the expression. \textsc{VA-Chc2} and \textsc{VB-Chc2} handle the case where the left alternative is unsatisfiable
 given the current variational context. This means we can safely eliminate the choice and replace it with the result of evaluating the right alternative.
 \textsc{VA-Chc3} and \textsc{VB-Chc3} handle the same case but for when the right alternative is unsatisfiable. There is no need for a rule for when
-both variants are unsatisfiable, as such a case should be prevented at the statement level.
+both variants are unsatisfiable, as our semantics prevents fully unsatisfiable contexts at the statement level before evaluating any expressions.
 
 
 The semantics of VIMP statements is slightly more complex when compared with expressions. First, we develop two separate
@@ -1123,14 +1124,14 @@ not be executed and the execution state should not change. \textsc{V-Sat} confir
 is satisfiable and then evaluates the statement with the appropriate $\Downarrow_{VS}$ rule.
 
 \textsc{VS-Skip} is self-explanatory. \textsc{VS-Assn} assigns a variable to the result of evaluating the given variational arithmetic expression.
-The store is updated according to the variational update operation defined in \ref{sec:vcvs}, taking the current variational context as an additional argument.
+The store is updated according to the variational update operation defined in Section \ref{sec:vcvs}, taking the current variational context as an additional argument.
 \textsc{VS-Seq} simply sequences the execution of two statements.
 
 For control structures, first we have the rule \textsc{VS-If}. First we evaluate the conditional expression $e$ to a variational boolean value $\bar{b}$.
 We then use the functions $\mathit{whenTrue}$ and $\mathit{whenFalse}$ (Section \ref{sec:control}) to extract the variational contexts under
 which $\bar{b}$ is $\CCkeyw{true}$ or $\CCkeyw{false}$, respectively. In the case that $\bar{b}$ is $\CCkeyw{false}$ in all variants, $\mathit{whenTrue}$
 returns the context value $\CCkeyw{false}$ (the same holds for $\CCkeyw{true}$ and $\mathit{whenFalse}$). We evaluate the $\CCkeyw{then}$
-statement under the current variational context combined with the value returned by $\mathit{whenTrue}$, and the $\CCkeyw{else}$ statement under
+statement under the current variational context combined with the value returned by $\mathit{whenTrue}$ and the $\CCkeyw{else}$ statement under
 the current variational context combined with the value returned by $\mathit{whenFalse}$. Because the $\mathit{whenTrue}$ and $\mathit{whenFalse}$
 functions return $\CCkeyw{false}$ when there are no variants that satisfy their condition, the combined variational context is unsatisfiable and will be
 caught by the rule \textsc{V-Unsat}, resulting in an unchanged program state. Otherwise, these branches are evaluated under the variational context
@@ -1146,15 +1147,15 @@ unsatisfiable and execution on the loop will be halted by the \textsc{V-Unsat} r
 loops in a variational language is that if one variant has an infinite loop then execution on any other variant cannot proceed.
 
 \textsc{VS-Throw} evaluates its variational arithmetic expression to a variational integer error code and adds that value and the variational context
-in which the error was produced to the the top frame of the error stack. \textsc{VS-Try} handles the case where the $\CCkeyw{try}$ block does not throw
+in which the error was produced to the top frame of the error stack. \textsc{VS-Try} handles the case where the $\CCkeyw{try}$ block does not throw
 any errors. It first pushes an empty frame onto the top of the error stack, evaluates the $\CCkeyw{try}$ block statement, and finally checks to see if
 the top frame of the stack remains empty, signaling that no exceptions were thrown in the $\CCkeyw{try}$ block. In this case we can proceed without evaluating the $\CCkeyw{catch}$ block.
 
 \textsc{VS-Catch} handles the case where a $\CCkeyw{try}$ block does throw an exception. Like \textsc{VS-Try}, it pushes an empty frame onto the top of the error
 stack, but in this case, the error frame is nonempty after evaluation of the $\CCkeyw{try}$ block, meaning that at least one variant has thrown an exception.
-It extracts a context value and variational integer representing the all error codes thrown via the $\mathit{catchCtx}$ and $\mathit{extract}$ functions, respectively (see
+It extracts a context value and variational integer representing all the error codes thrown via the $\mathit{catchCtx}$ and $\mathit{extract}$ functions, respectively (see
 Section \ref{sec:varexcept}). We then update the variable store at the supplied variable name, using the values returned by $\mathit{catchCtx}$ and $\mathit{extract}$
-and as the variational context and variational value arguments to the variational update operation. In this way, we extend the variable environment with the variational
+as the variational context and variational value arguments to the variational update operation. In this way, we extend the variable environment with the variational
 error code value but only for the variants that threw an exception within the $\CCkeyw{try}$ block. With the error code information now placed in the variable store,
 we execute the $\CCkeyw{catch}$ statement in the variational context returned by $\mathit{catchCtx}$.
 
@@ -1276,7 +1277,7 @@ data PVal
      = Unit
      | B Bool
      | I Int
-     | F Double
+     | D Double
      | S Symbol
 \end{lstlisting}
 
@@ -1317,7 +1318,7 @@ trees at all points in the language. This permitted us to write a single monadic
 of the language. We present this handler in Section \ref{sec:evalmonad}.
 
 The Resource DSL also supports unary functions over primitive values. The body of the function is simply a choice of expressions as defined above.
-The function takes a single parameter, which is a combination of the name the parameter will be bound to in the body of the function and type of the parameter. Because the
+The function takes a single parameter, which is a combination of the name of the parameter it will be bound to in the body of the function and the type of the parameter. Because the
 type of the parameter may depend on the variant it is located in, we define types to be a choice of primitive types. Typechecking is currently handled dynamically at runtime,
 although in the future we would like to potentially implement static typechecking for the language.
 
@@ -1375,7 +1376,7 @@ statements.
 
 \begin{minipage}{\linewidth}
 \begin{lstlisting}
-data Segment a = Elems [a] | Split BExpr (SegList a) (SegList a)
+data Segment a = Elems [a] | Split Cond (SegList a) (SegList a)
 type SegList a = [Segment a]
 type Block = SegList Stmt
 
@@ -1410,7 +1411,7 @@ even go so far as to require profiles, such as the specification of mission requ
 of \prog{Check} effects. Models should only be used where necessary, which typically means resource configurations that are
 sensitive to the order in which effects are carried out or that require runtime decision making enabled through control structures.
 
-The execution environment maintains a dictionary of profiles and models. This is used to lookup the corresponding profile or
+The execution environment maintains a dictionary of profiles and models. This is used to look up the corresponding profile or
 model when a call to the \prog{Load} command is made. In this way users can organize their programs via subroutines that are
 called from a parent model.
 
@@ -1423,7 +1424,7 @@ DSL implements some of the techniques detailed in VIMP in a real-world interpret
 side effects are typically implemented monadically, with multiple side effects being implemented by a monad transformer
 stack \cite{liang1995monad}. The principal evaluation mechanism in the Resource DSL is also monadic. Specifically,
 we utilize a reader monad instance for handling the current resource path prefix (set by \prog{In} statements),
-the immutable variable environment, and the dictionary of Models and Profiles; a State monad instance for handling
+the immutable variable environment, and the dictionary of Models and Profiles; a state monad instance for handling
 the resource environment; and an exception monad instance for throwing runtime exceptions.
 We encountered
 some challenges in integrating variation into a monad transformer stack. This section details our conclusions with regards to
@@ -1439,7 +1440,7 @@ Adding the monad instance for formula trees to the stack would not provide a var
 necessary to support side effects in a variational setting.
 
 This result is also unsurprising considering existing research into monad transformers. The list monad transformer has been
-proven to only be valid when composed with commutative monads, which includes our use of the state and exception monads \cite{jones1993composing}.
+proved to only be valid when composed with commutative monads, which includes our use of the state and exception monads \cite{jones1993composing}.
 The list monad is used to model nondeterminism. The monad instance for formula trees can be seen as modeling a kind of labeled nondeterminism.
 This can be further verified by comparing the behavior of both monads, which unwrap a collection of values, perform some computation, and
 place the results back into the collection. Given the proof that the list transformer monad only holds for commutative monads, it is no
@@ -1498,7 +1499,7 @@ computational overhead.
 We define a function \prog{vBind} that is analogous to the monadic bind operation, but for
 the type \prog{MonadEval m => m (V (Maybe a))} (Figure \ref{fig:vbind}). As Haskell does not allow us to write monad instances for this
 type, we define it as a standalone function. Of note is that \prog{vBind} demonstrates the flag-based exception handling optimization
-described in \ref{sec:varexcept}.
+described in Section \ref{sec:varexcept}.
 
 \prog{vBind} employs several helper functions. \prog{vMove} takes the condition of a choice and an action in the evaluation monad representing the
 computation to be carried out in evaluating a single alternative of a choice. It retrieves the current variational context and error context,
@@ -1509,10 +1510,10 @@ the variational context extended by the condition argument.
 
 \prog{vHandle} takes the condition of the choice and monadic actions for both alternatives. It calls \prog{vMove} for each alternative.
 It then catches any exceptions thrown in the alternatives, either by \prog{vMove} before execution of the action or during execution of the action
-itself. If both alternatives threw errors, the error is propagated by the choice, as in the optimization detailed in \ref{sec:varexcept}. Otherwise,
+itself. If both alternatives throw errors, the error is propagated by the choice, as in the optimization detailed in Section \ref{sec:varexcept}. Otherwise,
 it suppresses the exceptions thrown by single alternatives and replaces them with a placeholder \prog{Nothing} value.
 
-\prog{vBind} handles the variational value itself. First it extracts the variational value from within the evaluation monad. Then, it handles
+\prog{vBind} handles the variational value itself. First, it extracts the variational value from within the evaluation monad. Then, it handles
 the value based on its case. If the value is \prog{One Nothing}, it simply returns \prog{One Nothing} in a manner analogous to the behavior
 of the plain \prog{Maybe} monad. In the case of a variational value that is not a choice or \prog{Nothing}, we simply apply the function
 passed to \prog{vBind} to the underlying value. Finally, in the case of a choice, we wrap each alternative in the provided action
@@ -1581,7 +1582,7 @@ instance (MonadEval m) => Monad (VM m) where
 \subsection{Throwing Exceptions}
 \label{sec:throwing}
 
-Throwing exceptions is handled by the function \prog{vError}. \prog{vError} retrieves the current variational context
+Throwing exceptions is handled by the function \prog{vError}, which retrieves the current variational context
 from the reader context, updates the error context in the state to be the disjunction of the current error context and the variational context,
 updates the variational error value in the state with the \prog{Error} value just thrown, and finally throws an error in the exception monad to
 halt execution for the current variant.
@@ -1698,12 +1699,12 @@ as well as the functor, applicative, and monad instances that we have made use o
  Around the same time, Kim, Khurshid, and Batory developed \emph{shared execution} for testing software product lines \cite{sharedexec}.
  Shared execution primarily focuses on low-level support for variation at the level of a language VM.
  Unlike the variational \textsc{While} language, shared execution is not built on the formal foundation of the choice calculus, and thus its
- support for variation is handled on a more ad-hoc case-by-case basis, in particular in its merging of shared contexts. Nevertheless,
+ support for variation is handled on a more ad hoc case-by-case basis, in particular in its merging of shared contexts. Nevertheless,
  shared execution does contain an analogue of the variational context with variational store pattern for dealing with variational mutable state.
  
  Another seemingly independent development of variational execution was Austin and Flanagan's \emph{faceted evaluation} for Javascript \cite{faceted}.
  In this case, choices, or \emph{facets} as they are termed by Austin and Flanagan, represent desirable security properties of Javascript, where
- private data lows correspond to the right alternative and public dataflows correspond to the left alternative.
+ private dataflows correspond to the right alternative and public dataflows correspond to the left alternative.
  Again, this work contains an analogue of the variational context with variational store pattern, in this case referring to the variational context as
  the \emph{program counter}. Faceted evaluation only allows dimensions as tags for its choices, rather than arbitrary boolean expressions, which
  decreases the expressiveness of the language but obviates the need for satisfiability checking. Faceted evaluation additionally provides a formal
