@@ -71,7 +71,6 @@
     \parsep0pt plus0pt
     \parskip0pt\topsep0pt}
 
-\newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
 
 
 
@@ -691,19 +690,6 @@ the error context is an optional integer value indicating the current error code
 \label{fig:impexpr}
 \end{figure}
 
-\def \nothing {\bullet}
-%\def \BigErr {\infer [S-Err] { } {(n,S,s) \Downarrow_S (n,S)}}
-%\def \BigSkip {\infer [S-Skip] { } {(E,S,\CCkeyw{skip}) \Downarrow_S (E,S)}}
-%\def \BigAssn {\infer [S-Assn] {(S,a) \Downarrow_A n} {(\nothing,S,x \coloneqq a) \Downarrow_S (\nothing,S[x \rightarrow n])}}
-%\def \BigSeq {\infer [S-Seq] {(E,S,s) \Downarrow_S (E',S') \\ (E',S',s') \Downarrow_S (E'',S'')} {(E,S,s\ ;\ s') \Downarrow_S (E'',S'')}}
-%\def \BigIfT {\infer [S-IfT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
-%\def \BigIfF {\infer [S-IfF] {(S,e) \Downarrow_B \CCkeyw{false} \\ (\nothing,S,s') \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
-%\def \BigWhileT {\infer [S-WhileT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S') \\ (E,S',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')} {(\nothing,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')}}
-%\def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \CCkeyw{false}} {(E,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E,S)}}
-%\def \BigThrow {\infer [S-Throw] {(S,a) \Downarrow_A n} {(\nothing,S,\CCkeyw{throw}\ a) \Downarrow_S (n,S)}}
-%\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (\nothing,S')}}
-%\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (E,S'')}}
-
 \begin{figure}
 \begin{syntax}
 \text{(Store)}\\
@@ -737,34 +723,15 @@ the error context is an optional integer value indicating the current error code
 \begin{figure}
 \begin{syntax}
 \text{(Boolean literals)} \\
-b &::=& \CCkeyw{true} \\
-& | & \CCkeyw{false} \\
+\IMPBLit
 \text{(Conditions)}\\
-C &::=& b & \textit{Boolean literal} \\
-& | & D & \textit{Dimension name} \\
-& | & \neg C & \textit{Negation} \\
-& | & C \vee C & \textit{Disjunction} \\
-& | & C \wedge C & \textit{Conjunction} \\
+\VIMPCond
 \text{(Arithmetic expressions)}\\
-a &::=& n & \textit{Integer literal} \\
-& | & x & \textit{Variable reference} \\
-& | & a + a & \textit{Addition} \\
-& | & \tagtree{C}{a}{a} & \textit{Choice} \\
+\VIMPArith
 \text{(Boolean expressions)} \\
-e &::=& b & \textit{Boolean literal} \\
-& | & \CCkeyw{not}\ e & \textit{Negation} \\
-& | & e\ \CCkeyw{and}\ e & \textit{Conjunction} \\
-& | & a < a & \textit{Less} \\
-& | & \tagtree{C}{e}{e} & \textit{Choice} \\
+\VIMPBool
 \text{(Statements)} \\
-s &::=& \CCkeyw{skip} & \textit{Noop} \\
-& | & x \coloneqq a & \textit{Assignment} \\
-& | & s\ ;\ s & \textit{Sequencing} \\
-& | & \CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s & \textit{Conditional} \\
-& | & \CCkeyw{while}\ e\ \CCkeyw{do}\ s & \textit{Looping} \\
-& | & \CCkeyw{throw}\ a & \textit{Throw error} \\
-& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s & \textit{Catch error} \\
-& | & \tagtree{C}{s}{s} & \textit{Choice}
+\VIMPStmt
 \end{syntax}
 \caption{Syntax of Variational IMP}
 \label{fig:vimpsyn}
@@ -1024,31 +991,14 @@ a new variant via a choice that the configuration is satisfiable. Because except
 perform satisfiability checks before each expression. We utilize the standard applicative functor lifting functions, $\mathit{liftA}$ and $\mathit{liftA2}$ to support embedding
 operations such as addition or comparison within a variational context.
 
-\def \BigVNum {\infer [VA-Num] { } {(C,S,n) \Downarrow_{VA} n}}
-\def \BigVRef {\infer [VA-Ref] { } {(C,S,x) \Downarrow_{VA} S(C,x)}}
-\def \BigVAdd {\infer [VA-Add] {(C,S,e) \Downarrow_{VA} \bar{n} \\ (C,S,e') \Downarrow_{VA} \bar{n}'} {(C,S,e+e') \Downarrow_{VA} \mathit{liftA2}(+,\bar{n},\bar{n}')}}
-\def \BigVAChcOne {\infer [VA-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} \bar{n} \\ (C \wedge \neg C',S,a') \Downarrow_{VA} \bar{n}'} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} \tagtree{C'}{\bar{n}}{\bar{n}'}}}
-\def \BigVAChcTwo {\infer [VA-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,a') \Downarrow_{VA} \bar{n}} {(C,S,\tagtree{A}{a}{a'}) \Downarrow_{VA} \bar{n}}}
-\def \BigVAChcThree {\infer [VA-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,a) \Downarrow_{VA} \bar{n}} {(C,S,\tagtree{C'}{a}{a'}) \Downarrow_{VA} \bar{n}}}
-
-\def \BigVB {\infer [VB-Bool] { } {(C,S,b) \Downarrow_{VB} b}}
-\def \BigVNot {\infer [VB-Not] {(C,S,e) \Downarrow_{VB} \bar{b}} {(C,S,\CCkeyw{not}\ e) \Downarrow_{VB} \mathit{liftA}(\neg,\bar{b})}}
-\def \BigVAnd {\infer [VB-And] {(C,S,e) \Downarrow_{VB} \bar{b} \\ (C,S,e') \Downarrow_{VB} \bar{b}'} {(C,S,e\ \CCkeyw{and}\ e') \Downarrow_{VB} \mathit{liftA2}(\wedge,\bar{b},\bar{b}')}}
-\def \BigVLess {\infer [VB-Less] {(C,S,e) \Downarrow_{VA} \bar{b} \\ (C,S,e') \Downarrow_{VA} \bar{b}'} {(C,S,e<e') \Downarrow_{VB} \mathit{liftA2}(<,\bar{b},\bar{b}')}}
-\def \BigVBChcOne {\infer [VB-Chc1] {\mathit{sat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \neg C',S,e') \Downarrow_{VB} \bar{b}'} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \tagtree{C'}{\bar{b}}{\bar{b}'}}}
-\def \BigVBChcTwo {\infer [VB-Chc2] {\mathit{unsat}(C \wedge C') \\ \mathit{sat}(C \wedge \neg C') \\ (C \wedge \neg C',S,e') \Downarrow_{VB} \bar{b}} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \bar{b}}}
-\def \BigVBChcThree {\infer [VB-Chc3] {\mathit{sat}(C \wedge C') \\ \mathit{unsat}(C \wedge \neg C') \\ (C \wedge C',S,e) \Downarrow_{VB} \bar{b}} {(C,S,\tagtree{C'}{e}{e'}) \Downarrow_{VB} \bar{b}}}
-
 \begin{figure}[H]
 \begin{syntax}
 \text{(Store)}\\
-S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
+\StoreSynt
 \text{(Variational integers)}\\
-\bar{n} &::=& n & \textit{Integer literal} \\
-& | & \tagtree{C}{\bar{n}}{\bar{n}} & \textit{Choice} \\
+\VIntSynt
 \text{(Variational booleans)}\\
-\bar{b} &::=& b & \textit{Boolean literal} \\
-& | & \tagtree{C}{\bar{b}}{\bar{b}} & \textit{Choice}
+\VBoolSynt
 \end{syntax}
 
 \begin{mathpar}
@@ -1067,7 +1017,7 @@ S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
 \ContinuedFloat
 
 \begin{mathpar}
-\BigVB \and
+\BigVBool \and
 \BigVNot \and
 \BigVAnd \and
 \BigVLess \and

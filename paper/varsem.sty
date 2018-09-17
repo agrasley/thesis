@@ -31,6 +31,18 @@
 \newcommand{\Throw}[1]{\CCkeyw{throw}\ #1}
 \newcommand{\Try}[3]{\CCkeyw{try}\ #1\ \CCkeyw{catch}\ #2\ \CCkeyw{with}\ #3}
 
+% Conditions
+
+\newcommand{\Cond}{C}
+\newcommand{\Dimension}{D}
+\newcommand{\CNeg}[1]{\neg #1}
+\newcommand{\CAnd}[2]{#1 \wedge #2}
+\newcommand{\COr}[2]{#1 \vee #2}
+
+% Choices
+
+\newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
+
 
 % Semantics
 
@@ -52,6 +64,18 @@ S &::=& \Empty & \textit{Empty store} \\
 \newcommand{\BigB}[3]{(#1,#2) \Downarrow_B #3}
 \newcommand{\Lookup}[3]{\mathit{lookup}(#1,#2,#3)}
 \newcommand{\BigS}[5]{(#1,#2,#3) \Downarrow_S (#4,#5)}
+\newcommand{\BigVA}[4]{(#1,#2,#3) \Downarrow_{VA} #4}
+\newcommand{\BigVB}[4]{(#1,#2,#3) \Downarrow_{VB} #4}
+\newcommand{\VLookup}[3]{\mathit{vlookup}(#1,#2,#3)}
+\newcommand{\VNum}{\bar{\Num}}
+\newcommand{\VBool}{\bar{\BLit}}
+\newcommand{\LiftA}[2]{\mathit{liftA}(#1,#2)}
+\newcommand{\LiftATwo}[3]{\mathit{liftA2}(#1,#2,#3)}
+\newcommand{\Sat}[1]{\mathit{sat}(#1)}
+\newcommand{\Unsat}[1]{\mathit{unsat}(#1)}
+
+
+
 
 
 % IMP syntax
@@ -78,6 +102,28 @@ S &::=& \Empty & \textit{Empty store} \\
 & | & \While{\BExpr}{\Stmt} & \textit{Looping} \\
 & | & \Throw{\AExpr} & \textit{Throw error} \\
 & | & \Try{\Stmt}{\Var}{\Stmt} & \textit{Catch error}
+}
+
+% VIMP syntax
+
+\newcommand{\VIMPCond}{
+\Cond &::=& \BLit & \textit{Boolean literal} \\
+& | & \Dimension & \textit{Dimension name} \\
+& | & \CNeg{\Cond} & \textit{Negation} \\
+& | & \COr{\Cond}{\Cond} & \textit{Disjunction} \\
+& | & \CAnd{\Cond}{\Cond} & \textit{Conjunction} \\
+}
+\newcommand{\VIMPArith}{
+\IMPArith
+& | & \tagtree{\Cond}{\AExpr}{\AExpr} & \textit{Choice} \\
+}
+\newcommand{\VIMPBool}{
+\IMPBool
+& | & \tagtree{\Cond}{\BExpr}{\BExpr} & \textit{Choice} \\
+}
+\newcommand{\VIMPStmt}{
+\IMPStmt \\
+& | & \tagtree{\Cond}{\Stmt}{\Stmt} & \textit{Choice}
 }
 
 % IMP Expr Semantics
@@ -208,4 +254,141 @@ S &::=& \Empty & \textit{Empty store} \\
       \BigS{\Nothing}{\Ins{\Var}{\Num}{\Store'}}{\Stmt'}{\Error}{\Store''}}
     {\BigS{\Nothing}{\Store}{\Try{\Stmt}{\Var}{\Stmt'}}{\Error}{\Store''}}
 }
+
+% variational operations
+
+%\newcommand{\Sat}[1]{\mathit{sat}(#1)}
+%\newcommand{\Unsat}[1]{\mathit{unsat}(#1}
+%\newcommand{\Taut}[1]{\mathit{taut}(#1)}
+%\newcommand{\Imply}[2]{#1 \Rightarrow #2}
+%
+%\newcommand{\TautRule}{
+%  \infer [Taut]
+%    {\Unsat{\CNeg{\Cond}}}
+%    {\Taut{\Cond}}
+%}
+%\newcommand{\ImpliesRule}{
+%  \infer [Implies]
+%    {\Taut{\COr{(\CNeg{\Cond})}{\Cond'}}}
+%    {\Imply{\Cond}{\Cond'}}
+%}
+%\newcommand{\SelNum}{
+%  \infer [Sel-Num]
+%    { }
+%    {\Sel{\Cond}{\Num}{\Num}}
+%}
+%\newcommand{\SelVar}{
+%  \infer [Sel-Var]
+%    { }
+%    {\Sel{\Cond}{\Var}{\Var}}
+%}
+%\newcommand{\SelAdd}{
+%  \infer [Sel-Add]
+%    {\Sel{\Cond}{\AExpr}{\AExpr''} \\
+%      \Sel{\Cond}{\AExpr'}{\AExpr'''}}
+%    {\Sel{\Cond}{\AExpr+\AExpr'}{\AExpr''+\AExpr'''}}
+%}
+%\newcommand{\SelChcOne}{
+%  \infer [Sel-Chc1]
+%    {\Imply{\Cond}}
+%}
+
+% VIMP semantics
+
+\newcommand{\VIntSynt}{
+\VNum &::=& \Num & \textit{Integer literal} \\
+& | & \tagtree{\Cond}{\VNum}{\VNum} & \textit{Choice} \\
+}
+\newcommand{\VBoolSynt}{
+\VBool &::=& \BLit & \textit{Boolean literal} \\
+& | & \tagtree{\Cond}{\VBool}{\VBool} & \textit{Choice}
+}
+
+\newcommand{\BigVAType}{\BigVA{\Cond}{\Store}{\AExpr}{\VNum}}
+\newcommand{\BigVNum}{
+  \infer [VA-Num]
+    { }
+    {\BigVA{\Cond}{\Store}{\Num}{\Num}}
+}
+\newcommand{\BigVRef}{
+  \infer [VA-Ref]
+    { }
+    {\BigVA{\Cond}{\Store}{\Var}{\VLookup{\Cond}{\Var}{\Store}}}
+}
+\newcommand{\BigVAdd}{
+  \infer [VA-Add]
+    {\BigVA{\Cond}{\Store}{\BExpr}{\VNum} \\
+      \BigVA{\Cond}{\Store}{\BExpr'}{\VNum'}}
+    {\BigVA{\Cond}{\Store}{\BExpr+\BExpr'}{\LiftATwo{+}{\VNum}{\VNum'}}}
+}
+\newcommand{\BigVAChcOne}{
+  \infer [VA-Chc1] 
+    {\Sat{\CAnd{\Cond}{\Cond'}} \\
+      \Sat{\CAnd{\Cond}{\CNeg{\Cond'}}} \\
+      \BigVA{\CAnd{\Cond}{\Cond'}}{\Store}{\AExpr}{\VNum} \\
+      \BigVA{\CAnd{\Cond}{\CNeg{\Cond'}}}{\Store}{\AExpr'}{\VNum}}
+    {\BigVA{\Cond}{\Store}{\tagtree{\Cond'}{\AExpr}{\AExpr'}}{\tagtree{\Cond'}{\VNum}{\VNum'}}}
+}
+\newcommand{\BigVAChcTwo}{
+  \infer [VA-Chc2]
+    {\Unsat{\CAnd{\Cond}{\Cond'}} \\
+      \Sat{\CAnd{\Cond}{\CNeg{\Cond'}}} \\
+      \BigVA{\CAnd{\Cond}{\CNeg{\Cond'}}}{\Store}{\AExpr'}{\VNum}}
+    {\BigVA{\Cond}{\Store}{\tagtree{\Cond'}{\AExpr}{\AExpr'}}{\VNum}}
+}
+\newcommand{\BigVAChcThree}{
+  \infer [VA-Chc3]
+    {\Sat{\CAnd{\Cond}{\Cond'}} \\
+      \Unsat{\CAnd{\Cond}{\CNeg{\Cond'}}} \\
+      \BigVA{\CAnd{\Cond}{\Cond'}}{\Store}{\AExpr}{\VNum}}
+    {\BigVA{\Cond}{\Store}{\tagtree{\Cond'}{\AExpr}{\AExpr'}}{\VNum}}
+}
+
+\newcommand{\BigVBType}{\BigVB{\Cond}{\Store}{\BExpr}{\VBool}}
+\newcommand{\BigVBool}{
+  \infer [VB-Bool]
+    { }
+    {\BigVB{\Cond}{\Store}{\BLit}{\BLit}}
+}
+\newcommand{\BigVNot}{
+  \infer [VB-Not]
+    {\BigVB{\Cond}{\Store}{\BExpr}{\VBool}}
+    {\BigVB{\Cond}{\Store}{\Neg{\BExpr}}{\LiftA{\neg}{\VBool}}}
+}
+\newcommand{\BigVAnd}{
+  \infer [VB-And]
+    {\BigVB{\Cond}{\Store}{\BExpr}{\VBool} \\
+      \BigVB{\Cond}{\Store}{\BExpr'}{\VBool'}}
+    {\BigVB{\Cond}{\Store}{\Conj{\BExpr}{\BExpr'}}{\LiftATwo{\wedge}{\VBool}{\VBool'}}}
+}
+\newcommand{\BigVLess}{
+  \infer [VB-Less]
+    {\BigVA{\Cond}{\Store}{\AExpr}{\VNum} \\
+      \BigVA{\Cond}{\Store}{\AExpr'}{\VNum'}}
+    {\BigVB{\Cond}{\Store}{\AExpr<\AExpr'}{\LiftATwo{<}{\VNum}{\VNum'}}}
+}
+\newcommand{\BigVBChcOne}{
+  \infer [VB-Chc1]
+    {\Sat{\CAnd{\Cond}{\Cond'}} \\
+      \Sat{\CAnd{\Cond}{\CNeg{\Cond'}}} \\
+      \BigVB{\CAnd{\Cond}{\Cond'}}{\Store}{\BExpr}{\VBool} \\
+      \BigVB{\CAnd{\Cond}{\CNeg{\Cond'}}}{\Store}{\BExpr'}{\VBool}}
+    {\BigVB{\Cond}{\Store}{\tagtree{\Cond'}{\BExpr}{\BExpr'}}{\tagtree{\Cond'}{\VBool}{\VBool'}}}
+}
+\newcommand{\BigVBChcTwo}{
+  \infer [VB-Chc2]
+    {\Unsat{\CAnd{\Cond}{\Cond'}} \\
+      \Sat{\CAnd{\Cond}{\CNeg{\Cond'}}} \\
+      \BigVB{\CAnd{\Cond}{\CNeg{\Cond'}}}{\Store}{\BExpr'}{\VBool}}
+    {\BigVB{\Cond}{\Store}{\tagtree{\Cond'}{\BExpr}{\BExpr'}}{\VBool}}
+}
+\newcommand{\BigVBChcThree}{
+  \infer [VB-Chc3]
+    {\Sat{\CAnd{\Cond}{\Cond'}} \\
+      \Unsat{\CAnd{\Cond}{\CNeg{\Cond'}}} \\
+      \BigVB{\CAnd{\Cond}{\Cond'}}{\Store}{\BExpr}{\VBool}}
+    {\BigVB{\Cond}{\Store}{\tagtree{\Cond'}{\BExpr}{\BExpr'}}{\VBool}}
+}
+
+
 
