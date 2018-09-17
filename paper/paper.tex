@@ -21,6 +21,7 @@
 \usepackage{cc-ext}
 \usepackage{alltt}
 \usepackage{textcomp}
+\usepackage{varsem}
 
 % formatting
 \usepackage{graphicx,float}
@@ -71,6 +72,8 @@
     \parskip0pt\topsep0pt}
 
 \newcommand{\tagtree}[3]{#1 \langle #2, #3 \rangle}
+
+
 
 \title{Imperative Programming with Variational Effects}
 \author{Alex Grasley}
@@ -640,25 +643,13 @@ serve as a base that can be readily extended to more full-featured languages.
 \begin{figure}
 \begin{syntax}
 \text{(Arithmetic expressions)}\\
-a &::=& n & \textit{Integer literal} \\
-& | & x & \textit{Variable reference} \\
-& | & a + a & \textit{Addition} \\
+\IMPArith
 \text{(Boolean literals)} \\
-b &::=& \CCkeyw{true} \\
-& | & \CCkeyw{false} \\
+\IMPBLit
 \text{(Boolean expressions)} \\
-e &::=& b & \textit{Boolean literal} \\
-& | & \CCkeyw{not}\ e & \textit{Negation} \\
-& | & e\ \CCkeyw{and}\ e & \textit{Conjunction} \\
-& | & a < a & \textit{Less} \\
+\IMPBool
 \text{(Statements)} \\
-s &::=& \CCkeyw{skip} & \textit{Noop} \\
-& | & x \coloneqq a & \textit{Assignment} \\
-& | & s\ ;\ s & \textit{Sequencing} \\
-& | & \CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s & \textit{Conditional} \\
-& | & \CCkeyw{while}\ e\ \CCkeyw{do}\ s & \textit{Looping} \\
-& | & \CCkeyw{throw}\ a & \textit{Throw error} \\
-& | & \CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s & \textit{Catch error}
+\IMPStmt
 \end{syntax}
 \caption{Syntax of IMP with exceptions}
 \label{fig:impsyn}
@@ -679,31 +670,19 @@ store and are otherwise straightforward in their definition. Figure \ref{fig:imp
 side effects: updating the variable store or modifying the current error context. In practice the variable store can be simply implemented as a map data structure, while
 the error context is an optional integer value indicating the current error code.
 
-\def \BigN {\infer [A-Num] { } {(S,n) \Downarrow_A n}}
-
-\def \BigVar {\infer [A-Ref] { } {(S,x) \Downarrow_A S(x)}}
-
-\def \BigAdd {\infer [A-Add] {(S,a) \Downarrow_A n \\ (S,a') \Downarrow_A n' } {(S,a+a') \Downarrow_A n+n'}}
-
-\def \BigB {\infer [B-Bool] { } {(S,b) \Downarrow_B b}}
-
-\def \BigNot {\infer [B-Not] {(S,e) \Downarrow_B b} {(S,\CCkeyw{not}\ e) \Downarrow_B \neg b}}
-
-\def \BigAnd {\infer [B-And] {(S,e) \Downarrow_B b \\ (S,e') \Downarrow_B b'} {(S,e\ \CCkeyw{and}\ e') \Downarrow_B b \wedge b'}}
-
-\def \BigLess {\infer [B-Less] {(S,a) \Downarrow_A n \\ (S,a') \Downarrow_A n'} {(S,a<a') \Downarrow_B n<n'}}
-
 \begin{figure}
 \begin{syntax}
 \text{(Store)}\\
-S &::=& S(x) & \textit{Lookup x in S} \\
+\StoreSynt
 \end{syntax}
 
 \begin{mathpar}
+\LookupHere \and
+\LookupThere \and
 \BigN \and
 \BigVar \and
 \BigAdd \and
-\BigB \and
+\BigBool \and
 \BigNot \and
 \BigAnd \and
 \BigLess

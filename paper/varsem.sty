@@ -1,0 +1,137 @@
+\ProvidesPackage{varsem}
+
+\RequirePackage{mathpartir}
+\RequirePackage{cc}
+
+% Syntax
+
+% arithmetic expressions
+
+\newcommand{\AExpr}{a}
+\newcommand{\Num}{n}
+\newcommand{\Var}{x}
+
+% boolean expressions
+
+\newcommand{\BLit}{b}
+\newcommand{\True}{\CCkeyw{true}}
+\newcommand{\False}{\CCkeyw{false}}
+\newcommand{\BExpr}{e}
+\newcommand{\Neg}[1]{\CCkeyw{not}\ #1}
+\newcommand{\Conj}[2]{#1\ \CCkeyw{and}\ #2}
+
+% statements
+
+\newcommand{\Stmt}{s}
+\newcommand{\Skip}{\CCkeyw{skip}}
+\newcommand{\Assign}[2]{#1 \coloneqq #2}
+\newcommand{\Seq}[2]{#1\ ;\ #2}
+\newcommand{\ITE}[3]{\CCkeyw{if}\ #1\ \CCkeyw{then}\ #2\ \CCkeyw{else}\ #3}
+\newcommand{\While}[2]{\CCkeyw{while}\ #1\ \CCkeyw{do}\ #2}
+\newcommand{\Throw}[1]{\CCkeyw{throw}\ #1}
+\newcommand{\Try}[3]{\CCkeyw{try}\ #1\ \CCkeyw{catch}\ #2\ \CCkeyw{with}\ #3}
+
+
+% Semantics
+
+\newcommand{\Store}{S}
+\newcommand{\Empty}{\mathit{empty}}
+\newcommand{\Ins}[3]{\mathit{ins}((#1,#2),#3)}
+\newcommand{\StoreSynt}{
+S &::=& \Empty & \textit{Empty store} \\
+& | & \Ins{\Var}{\Num}{\Store} & \textit{Insert value \Num\ as variable \Var\ in \Store} \\
+}
+
+\newcommand{\BigA}[3]{(#1,#2) \Downarrow_A #3}
+\newcommand{\BigB}[3]{(#1,#2) \Downarrow_B #3}
+\newcommand{\Lookup}[3]{\mathit{lookup}(#1,#2,#3)}
+
+
+% IMP syntax
+\newcommand{\IMPArith}{
+\AExpr &::=& \Num & \textit{Integer literal} \\
+& | & \Var & \textit{Variable reference} \\
+& | & \AExpr + \AExpr & \textit{Addition} \\
+}
+\newcommand{\IMPBLit}{
+\BLit &::=& \True \\
+& | & \False \\
+}
+\newcommand{\IMPBool}{
+\BExpr &::=& \BLit & \textit{Boolean literal} \\
+& | & \Neg{\BExpr} & \textit{Negation} \\
+& | & \Conj{\BExpr}{\BExpr} & \textit{Conjunction} \\
+& | & \AExpr < \AExpr & \textit{Less} \\
+}
+\newcommand{\IMPStmt}{
+\Stmt &::=& \Skip & \textit{Noop} \\
+& | & \Assign{\Var}{\AExpr} & \textit{Assignment} \\
+& | & \Seq{\Stmt}{\Stmt} & \textit{Sequencing} \\
+& | & \ITE{\BExpr}{\Stmt}{\Stmt} & \textit{Conditional} \\
+& | & \While{\BExpr}{\Stmt} & \textit{Looping} \\
+& | & \Throw{\AExpr} & \textit{Throw error} \\
+& | & \Try{\Stmt}{\Var}{\Stmt} & \textit{Catch error}
+}
+
+% IMP Arith Expr Semantics
+
+\newcommand{\LookupHere}{
+  \infer [Lookup-Here]
+    { }
+    {\Lookup{\Ins{\Var}{\Num}{\Store}}{\Var}{\Num}}
+}
+
+\newcommand{\LookupThere}{
+  \infer [Lookup-There]
+    {\Lookup{\Store}{\Var}{\Num}}
+    {\Lookup{\Ins{\Var'}{\Num'}{\Store}}{\Var}{\Num}}
+}
+
+\newcommand{\BigAType}{\BigA{\Store}{\AExpr}{\Num}}
+
+\newcommand{\BigN}{
+  \infer [A-Num]
+    { }
+    {\BigA{\Store}{\Num}{\Num}}
+}
+
+\newcommand{\BigVar}{
+  \infer [A-Ref]
+    {\Lookup{\Store}{\Var}{\Num}}
+    {\BigA{\Store}{\Var}{\Num}}
+}
+
+\newcommand{\BigAdd}{
+  \infer [A-Add]
+    {\BigA{\Store}{\AExpr}{\Num} \\
+      \BigA{\Store}{\AExpr'}{\Num'}}
+    {\BigA{\Store}{\AExpr+\AExpr'}{\Num+\Num'}}
+}
+
+\newcommand{\BigBType}{\BigB{\Store}{\BExpr}{\BLit}}
+
+\newcommand{\BigBool}{
+  \infer [B-Bool]
+    { }
+    {\BigB{\Store}{\BLit}{\BLit}}
+}
+
+\newcommand{\BigNot}{
+  \infer [B-Not]
+    {\BigB{\Store}{\BExpr}{\BLit}}
+    {\BigB{\Store}{\Neg{\BExpr}}{\neg \BLit}}
+}
+
+\newcommand{\BigAnd}{
+  \infer [B-And]
+    {\BigB{\Store}{\BExpr}{\BLit} \\
+      \BigB{\Store}{\BExpr'}{\BLit'}}
+    {\BigB{\Store}{\Conj{\BExpr}{\BExpr'}}{\BLit \wedge \BLit'}}
+}
+
+\newcommand{\BigLess}{
+  \infer [B-Less]
+    {\BigA{\Store}{\AExpr}{\Num} \\
+      \BigA{\Store}{\AExpr'}{\Num'}}
+    {\BigB{\Store}{\AExpr<\AExpr'}{\Num<\Num'}}
+}
