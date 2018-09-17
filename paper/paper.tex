@@ -692,26 +692,24 @@ the error context is an optional integer value indicating the current error code
 \end{figure}
 
 \def \nothing {\bullet}
-\def \BigErr {\infer [S-Err] { } {(n,S,s) \Downarrow_S (n,S)}}
-\def \BigSkip {\infer [S-Skip] { } {(E,S,\CCkeyw{skip}) \Downarrow_S (E,S)}}
-\def \BigAssn {\infer [S-Assn] {(S,a) \Downarrow_A n} {(\nothing,S,x \coloneqq a) \Downarrow_S (\nothing,S[x \rightarrow n])}}
-\def \BigSeq {\infer [S-Seq] {(E,S,s) \Downarrow_S (E',S') \\ (E',S',s') \Downarrow_S (E'',S'')} {(E,S,s\ ;\ s') \Downarrow_S (E'',S'')}}
-\def \BigIfT {\infer [S-IfT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
-\def \BigIfF {\infer [S-IfF] {(S,e) \Downarrow_B \CCkeyw{false} \\ (\nothing,S,s') \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
-\def \BigWhileT {\infer [S-WhileT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S') \\ (E,S',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')} {(\nothing,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')}}
-\def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \CCkeyw{false}} {(E,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E,S)}}
-\def \BigThrow {\infer [S-Throw] {(S,a) \Downarrow_A n} {(\nothing,S,\CCkeyw{throw}\ a) \Downarrow_S (n,S)}}
-\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (\nothing,S')}}
-\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (E,S'')}}
+%\def \BigErr {\infer [S-Err] { } {(n,S,s) \Downarrow_S (n,S)}}
+%\def \BigSkip {\infer [S-Skip] { } {(E,S,\CCkeyw{skip}) \Downarrow_S (E,S)}}
+%\def \BigAssn {\infer [S-Assn] {(S,a) \Downarrow_A n} {(\nothing,S,x \coloneqq a) \Downarrow_S (\nothing,S[x \rightarrow n])}}
+%\def \BigSeq {\infer [S-Seq] {(E,S,s) \Downarrow_S (E',S') \\ (E',S',s') \Downarrow_S (E'',S'')} {(E,S,s\ ;\ s') \Downarrow_S (E'',S'')}}
+%\def \BigIfT {\infer [S-IfT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
+%\def \BigIfF {\infer [S-IfF] {(S,e) \Downarrow_B \CCkeyw{false} \\ (\nothing,S,s') \Downarrow_S (E,S')} {(\nothing,S,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_S (E,S')}}
+%\def \BigWhileT {\infer [S-WhileT] {(S,e) \Downarrow_B \CCkeyw{true} \\ (\nothing,S,s) \Downarrow_S (E,S') \\ (E,S',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')} {(\nothing,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E',S'')}}
+%\def \BigWhileF {\infer [S-WhileF] {(S,e) \Downarrow_B \CCkeyw{false}} {(E,S,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_S (E,S)}}
+%\def \BigThrow {\infer [S-Throw] {(S,a) \Downarrow_A n} {(\nothing,S,\CCkeyw{throw}\ a) \Downarrow_S (n,S)}}
+%\def \BigTry {\infer [S-Try] {(\nothing,S,s) \Downarrow_S (\nothing,S')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (\nothing,S')}}
+%\def \BigCatch {\infer [S-Catch] {(\nothing,S,s) \Downarrow_S (n,S') \\ (\nothing,S'[x \rightarrow n],s') \Downarrow_S (E,S'')} {(\nothing,S,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_S (E,S'')}}
 
 \begin{figure}
 \begin{syntax}
 \text{(Store)}\\
-S &::=& S(x) & \textit{Lookup x in S} \\
-& | & S[x \rightarrow n] & \textit{Update x in S to n} \\
+\StoreSynt
 \text{(Error context)} \\
-E &::=& \nothing & \textit{No error} \\
-& | & n & \textit{Error with value n}
+\ErrorSynt
 \end{syntax}
 
 

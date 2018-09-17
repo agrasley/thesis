@@ -35,16 +35,23 @@
 % Semantics
 
 \newcommand{\Store}{S}
+\newcommand{\Error}{E}
+\newcommand{\Nothing}{\bullet}
 \newcommand{\Empty}{\mathit{empty}}
 \newcommand{\Ins}[3]{\mathit{ins}((#1,#2),#3)}
 \newcommand{\StoreSynt}{
 S &::=& \Empty & \textit{Empty store} \\
 & | & \Ins{\Var}{\Num}{\Store} & \textit{Insert value \Num\ as variable \Var\ in \Store} \\
 }
+\newcommand{\ErrorSynt}{
+\Error &::=& \Nothing & \textit{No error} \\
+& | & \Num & \textit{Error with value \Num}
+}
 
 \newcommand{\BigA}[3]{(#1,#2) \Downarrow_A #3}
 \newcommand{\BigB}[3]{(#1,#2) \Downarrow_B #3}
 \newcommand{\Lookup}[3]{\mathit{lookup}(#1,#2,#3)}
+\newcommand{\BigS}[5]{(#1,#2,#3) \Downarrow_S (#4,#5)}
 
 
 % IMP syntax
@@ -73,7 +80,7 @@ S &::=& \Empty & \textit{Empty store} \\
 & | & \Try{\Stmt}{\Var}{\Stmt} & \textit{Catch error}
 }
 
-% IMP Arith Expr Semantics
+% IMP Expr Semantics
 
 \newcommand{\LookupHere}{
   \infer [Lookup-Here]
@@ -135,3 +142,70 @@ S &::=& \Empty & \textit{Empty store} \\
       \BigA{\Store}{\AExpr'}{\Num'}}
     {\BigB{\Store}{\AExpr<\AExpr'}{\Num<\Num'}}
 }
+
+% IMP Stmt Semantics
+
+\newcommand{\BigSType}{\BigS{\Error}{\Store}{\Stmt}{\Error}{\Store}}
+
+\newcommand{\BigErr}{
+  \infer [S-Err]
+    { }
+    {\BigS{\Num}{\Store}{\Stmt}{\Num}{\Store}}
+}
+\newcommand{\BigSkip}{
+  \infer [S-Skip]
+    { }
+    {\BigS{\Error}{\Store}{\Skip}{\Error}{\Store}}
+}
+\newcommand{\BigAssn}{
+  \infer [S-Assn]
+    {\BigA{\Store}{\AExpr}{\Num}}
+    {\BigS{\Nothing}{\Store}{\Assign{\Var}{\AExpr}}{\Nothing}{\Ins{\Var}{\Num}{\Store}}}
+}
+\newcommand{\BigSeq}{
+  \infer [S-Seq]
+    {\BigS{\Error}{\Store}{\Stmt}{\Error'}{\Store'} \\
+      \BigS{\Error'}{\Store'}{\Stmt'}{\Error''}{\Store''}}
+    {\BigS{\Error}{\Store}{\Seq{\Stmt}{\Stmt'}}{\Error''}{\Store''}}
+}
+\newcommand{\BigIfT}{
+  \infer [S-IfT]
+    {\BigB{\Store}{\BExpr}{\True} \\
+      \BigS{\Nothing}{\Store}{\Stmt}{\Error}{\Store'}}
+    {\BigS{\Nothing}{\Store}{\ITE{\BExpr}{\Stmt}{\Stmt'}}{\Error}{\Store'}}
+}
+\newcommand{\BigIfF}{
+  \infer [S-IfF]
+    {\BigB{\Store}{\BExpr}{\False} \\
+      \BigS{\Nothing}{\Store}{\Stmt'}{\Error}{\Store'}}
+    {\BigS{\Nothing}{\Store}{\ITE{\BExpr}{\Stmt}{\Stmt'}}{\Error}{\Store'}}
+}
+\newcommand{\BigWhileT}{
+  \infer [S-WhileT]
+    {\BigB{\Store}{\BExpr}{\True} \\
+      \BigS{\Nothing}{\Store}{\Stmt}{\Error}{\Store'} \\
+      \BigS{\Error}{\Store'}{\While{\BExpr}{\Stmt}}{\Error'}{\Store''}}
+    {\BigS{\Nothing}{\Store}{\While{\BExpr}{\Stmt}}{\Error'}{\Store''}}
+}
+\newcommand{\BigWhileF}{
+  \infer [S-WhileF]
+    {\BigB{\Store}{\BExpr}{\False}}
+    {\BigS{\Error}{\Store}{\While{\BExpr}{\Stmt}}{\Error}{\Store}}
+}
+\newcommand{\BigThrow}{
+  \infer [S-Throw]
+    {\BigA{\Store}{\AExpr}{\Num}}
+    {\BigS{\Nothing}{\Store}{\Throw{\AExpr}}{\Num}{\Store}}
+}
+\newcommand{\BigTry}{
+  \infer [S-Try]
+    {\BigS{\Nothing}{\Store}{\Stmt}{\Nothing}{\Store'}}
+    {\BigS{\Nothing}{\Store}{\Try{\Stmt}{\Var}{\Stmt'}}{\Nothing}{\Store'}}
+}
+\newcommand{\BigCatch}{
+  \infer [S-Catch]
+    {\BigS{\Nothing}{\Store}{\Stmt}{\Num}{\Store'} \\
+      \BigS{\Nothing}{\Ins{\Var}{\Num}{\Store'}}{\Stmt'}{\Error}{\Store''}}
+    {\BigS{\Nothing}{\Store}{\Try{\Stmt}{\Var}{\Stmt'}}{\Error}{\Store''}}
+}
+
