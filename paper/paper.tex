@@ -1118,22 +1118,6 @@ filtering out those that configure to \prog{Nothing}, and then unwrapping the re
 values until we find one that has a condition that evaluates to \prog{True} under the given configuration.
 
 
-\newcommand{\GetCtx}[2]{\mathit{ctx}(#1,#2)}
-\def \gc {\GetCtx{C}{E}}
-\def \T {\mathit{true}}
-\def \F {\mathit{false}}
-\def \BigVUnsat {\infer [V-Unsat] {\mathit{unsat}(\gc)} {(C,S,E,s) \Downarrow_{V} (S,E)}}
-\def \BigVSat {\infer [V-Sat] {\mathit{sat}(\gc) \\ (C,S,E,s) \Downarrow_{VS} (S',E')} {(C,S,E,s) \Downarrow_{V} (S',E')}}
-\def \BigVSkip {\infer[VS-Skip] { } {(C,S,E,\CCkeyw{skip}) \Downarrow_{VS} (S,E)}}
-\def \BigVAssn {\infer[VS-Assn] {(\gc,S,a) \Downarrow_{VA} \bar{n}} {(C,S,E,x \coloneqq a) \Downarrow_{VS} (S[(\gc,x) \rightarrow \bar{n}],E)}}
-\def \BigVSeq {\infer [VS-Seq] {(C,S,E,s) \Downarrow_{V} (S',E') \\ (C,S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,s\ ;\ s') \Downarrow_{VS} (S'',E'')}}
-\def \BigVIf {\infer [VS-If] {(\gc,S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \mathit{whenTrue}(\bar{b}),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenFalse}(\bar{b}),S',E') \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{if}\ e\ \CCkeyw{then}\ s\ \CCkeyw{else}\ s') \Downarrow_{VS} (S'',E'')}}
-\def \BigVWhile {\infer [VS-While] {(\GetCtx{C}{E},S,e) \Downarrow_{VB} \bar{b} \\ (C \wedge \mathit{whenTrue}(\bar{b}),S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \mathit{whenTrue}(\bar{b}),S',E',\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{V} (S'',E'')} {(C,S,E,\CCkeyw{while}\ e\ \CCkeyw{do}\ s) \Downarrow_{VS} (S'',E'')}}
-\def \BigVThrow {\infer [VS-Throw] {(\GetCtx{C}{l:E},S,a) \Downarrow_{VA} \bar{n}} {(C,S,l:E,\CCkeyw{throw}\ a) \Downarrow_{VS} (S,((C,\bar{n}):l):E)}}
-\def \BigVTry {\infer [VS-Try] {(C,S,[]:E,s) \Downarrow_{V} (S',[]:E)} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S',E)}}
-\def \BigVCatch {\inferrule*[lab=VS-Catch,right={$\mathit{nonempty}\ l$}] {(C,S,[]:E,s) \Downarrow_{V} (S',l:E) \\ (\mathit{catchCtx}(C,l),S'[(\GetCtx{\mathit{catchCtx}(C,l)}{E},x) \rightarrow \mathit{extract}(l)],E,s') \Downarrow_{V} (S'',E')} {(C,S,E,\CCkeyw{try}\ s\ \CCkeyw{catch}\ x\ \CCkeyw{with}\ s') \Downarrow_{VS} (S'',E')}}
-\def \BigVChc {\infer [VS-Chc] {(C \wedge C',S,E,s) \Downarrow_{V} (S',E') \\ (C \wedge \neg C',S',E',s') \Downarrow_{V} (S'',E'')} {(C,S,E,\tagtree{C'}{s}{s'}) \Downarrow_{VS} (S'',E'')}}
-
 \begin{figure}[H]
 \begin{syntax}
 \text{(Store)}\\

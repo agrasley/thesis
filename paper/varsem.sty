@@ -48,6 +48,8 @@
 
 \newcommand{\Store}{S}
 \newcommand{\Error}{E}
+\newcommand{\EList}{l}
+\newcommand{\Nil}{[]}
 \newcommand{\Nothing}{\bullet}
 \newcommand{\Empty}{\mathit{empty}}
 \newcommand{\Ins}[3]{\mathit{ins}((#1,#2),#3)}
@@ -66,14 +68,22 @@ S &::=& \Empty & \textit{Empty store} \\
 \newcommand{\BigS}[5]{(#1,#2,#3) \Downarrow_S (#4,#5)}
 \newcommand{\BigVA}[4]{(#1,#2,#3) \Downarrow_{VA} #4}
 \newcommand{\BigVB}[4]{(#1,#2,#3) \Downarrow_{VB} #4}
+\newcommand{\BigV}[6]{(#1,#2,#3,#4) \Downarrow_V (#5,#6)}
+\newcommand{\BigVS}[6]{(#1,#2,#3,#4) \Downarrow_{VS} (#5,#6)}
 \newcommand{\VLookup}[3]{\mathit{vlookup}(#1,#2,#3)}
+\newcommand{\VUpdate}[4]{\mathit{vupdate}(#1,#2,#3,#4)}
 \newcommand{\VNum}{\bar{\Num}}
 \newcommand{\VBool}{\bar{\BLit}}
 \newcommand{\LiftA}[2]{\mathit{liftA}(#1,#2)}
 \newcommand{\LiftATwo}[3]{\mathit{liftA2}(#1,#2,#3)}
 \newcommand{\Sat}[1]{\mathit{sat}(#1)}
 \newcommand{\Unsat}[1]{\mathit{unsat}(#1)}
-
+\newcommand{\GetCtx}[2]{\mathit{ctx}(#1,#2)}
+\newcommand{\DefCtx}{\GetCtx{C}{E}}
+\newcommand{\WhenTrue}[1]{\mathit{whenTrue}(#1)}
+\newcommand{\WhenFalse}[1]{\mathit{whenFalse}(#1)}
+\newcommand{\CatchCtx}[2]{\mathit{catchCtx}(#1,#2)}
+\newcommand{\Extract}[1]{\mathit{extract}(#1)}
 
 
 
@@ -389,6 +399,73 @@ S &::=& \Empty & \textit{Empty store} \\
       \BigVB{\CAnd{\Cond}{\Cond'}}{\Store}{\BExpr}{\VBool}}
     {\BigVB{\Cond}{\Store}{\tagtree{\Cond'}{\BExpr}{\BExpr'}}{\VBool}}
 }
+
+\newcommand{\BigVType}{\BigV{\Cond}{\Store}{\Error}{\Stmt}{\Store}{\Error}}
+\newcommand{\BigVSType}{\BigVS{\Cond}{\Store}{\Error}{\Stmt}{\Store}{\Error}}
+\newcommand{\BigVUnsat}{
+  \infer [V-Unsat]
+    {\Unsat{\DefCtx)}}
+    {\BigV{\Cond}{\Store}{\Error}{\Stmt}{\Store}{\Error}}
+}
+\newcommand{\BigVSat}{
+  \infer [V-Sat]
+    {\Sat{\DefCtx} \\
+      \BigVS{\Cond}{\Store}{\Error}{\Stmt}{\Store'}{\Error'}}
+    {\BigV{\Cond}{\Store}{\Error}{\Stmt}{\Store'}{\Error'}}
+}
+\newcommand{\BigVSkip}{
+  \infer[VS-Skip]
+    { }
+    {\BigVS{\Cond}{\Store}{\Error}{\Skip}{\Store}{\Error}}
+}
+\newcommand{\BigVAssn}{
+  \infer[VS-Assn]
+    {\BigVA{\DefCtx}{\Store}{\AExpr}{\VNum}}
+    {\BigVS{\Cond}{\Store}{\Error}{\Assign{\Var}{\AExpr}}{\VUpdate{\DefCtx}{\Var}{\VNum}{\Store}}{\Error}}
+}
+\newcommand{\BigVSeq}{
+  \infer [VS-Seq]
+    {\BigV{\Cond}{\Store}{\Error}{\Stmt}{\Store'}{\Error'} \\
+      \BigV{\Cond}{\Store'}{\Error'}{\Stmt'}{\Store''}{\Error''}}
+    {\BigVS{\Cond}{\Store}{\Error}{\Seq{\Stmt}{\Stmt'}}{\Store''}{\Error''}}
+}
+\newcommand{\BigVIf}{
+  \infer [VS-If]
+    {\BigVB{\DefCtx}{\Store}{\BExpr}{\VBool} \\
+      \BigV{\CAnd{\Cond}{\WhenTrue{\VBool}}}{\Store}{\Error}{\Stmt}{\Store'}{\Error'} \\
+      \BigV{\CAnd{\Cond}{\WhenFalse{\VBool}}}{\Store'}{\Error'}{\Store''}{\Error''}}
+    {\BigVS{\Cond}{\Store}{\Error}{\ITE{\BExpr}{\Stmt}{\Stmt'}}{\Store''}{\Error''}}
+}
+\newcommand{\BigVWhile}{
+  \infer [VS-While]
+    {\BigVB{\DefCtx}{\Store}{\BExpr}{\VBool} \\
+      \BigV{\CAnd{\Cond}{\WhenTrue{\VBool}}}{\Store}{\Error}{\Stmt}{\Store'}{\Error'} \\
+      \BigV{\CAnd{\Cond}{\WhenTrue{\VBool}}}{\Store'}{\Error'}{\While{\BExpr}{\Stmt}}{\Store''}{\Error''}}
+    {\BigVS{\Cond}{\Store}{\Error}{\While{\BExpr}{\Stmt}}{\Store''}{\Error''}}
+}
+\newcommand{\BigVThrow}{
+  \infer [VS-Throw]
+    {\BigVA{\GetCtx{\Cond}{\EList:\Error}}{\Store}{\AExpr}{\VNum}}
+    {\BigVS{\Cond}{\Store}{\EList:\Error}{\Throw{\AExpr}}{\Store}{((\Cond,\VNum):\EList):\Error}}
+}
+\newcommand{\BigVTry}{
+  \infer [VS-Try]
+    {\BigV{\Cond}{\Store}{\Nil:\Error}{\Stmt}{\Store'}{\Nil:\Error}}
+    {\BigVS{\Cond}{\Store}{\Error}{\Try{\Stmt}{\Var}{\Stmt'}}{\Store'}{\Error}}
+}
+\newcommand{\BigVCatch}{
+  \inferrule*[lab=VS-Catch,right={$\mathit{nonempty}\ \EList$}]
+    {\BigV{\Cond}{\Store}{\Nil:\Error}{\Stmt}{\Store'}{\EList:\Error} \\
+      \BigV{\CatchCtx{\Cond}{\EList}}{\VUpdate{\GetCtx{\CatchCtx{\Cond}{\EList}}{\Error}}{\Var}{\Extract{\EList}}{\Store'}}{\Error}{\Stmt'}{\Store''}{\Error'}}
+    {\BigVS{\Cond}{\Store}{\Error}{\Try{\Stmt}{\Var}{\Stmt'}}{\Store''}{\Error'}}
+}
+\newcommand{\BigVChc}{
+  \infer [VS-Chc]
+    {\BigV{\CAnd{\Cond}{\Cond'}}{\Store}{\Error}{\Stmt}{\Store'}{\Error'} \\
+      \BigV{\CAnd{\Cond}{\CNeg{\Cond'}}}{\Store'}{\Error'}{\Stmt'}{\Store''}{\Error''}}
+    {\BigVS{\Cond}{\Store}{\Error}{\tagtree{\Cond'}{\Stmt}{\Stmt'}}{\Store''}{\Error''}}
+}
+
 
 
 
