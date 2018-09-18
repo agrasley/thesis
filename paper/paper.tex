@@ -22,6 +22,7 @@
 \usepackage{alltt}
 \usepackage{textcomp}
 \usepackage{varsem}
+\usepackage{framed}
 
 % formatting
 \usepackage{graphicx,float}
@@ -675,6 +676,12 @@ the error context is an optional integer value indicating the current error code
 \StoreSynt
 \end{syntax}
 
+\begin{center}
+\framebox(200,65){
+    \parbox{180\unitlength}{Type of judgments $\Downarrow_A$ and $\Downarrow_B$ \\ $\BigAType$ \\ $\BigBType$}
+}
+\end{center}
+
 \begin{mathpar}
 \LookupHere \and
 \LookupThere \and
@@ -698,6 +705,11 @@ the error context is an optional integer value indicating the current error code
 \ErrorSynt
 \end{syntax}
 
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_S$ \\ $\BigSType$}
+}
+\end{center}
 
 \begin{mathpar}
 \BigErr \and
@@ -1003,6 +1015,12 @@ operations such as addition or comparison within a variational context.
 \VBoolSynt
 \end{syntax}
 
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VA}$ \\ $\BigVAType$}
+}
+\end{center}
+
 \begin{mathpar}
 \BigVNum \and
 \BigVRef \and
@@ -1017,6 +1035,12 @@ operations such as addition or comparison within a variational context.
 
 \begin{figure}[H]
 \ContinuedFloat
+
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VB}$ \\ $\BigVBType$}
+}
+\end{center}
 
 \begin{mathpar}
 \BigVBool \and
@@ -1135,15 +1159,32 @@ values until we find one that has a condition that evaluates to \prog{True} unde
 \text{(Error context)} \\
 \ErrorCtxSynt
 \end{syntax}
+
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{V}$ \\ $\BigVType$}
+}
+\end{center}
+
+\begin{mathpar}
+\BigVSat \and
+\BigVUnsat
+\end{mathpar}
+
 \caption{Big-step semantics of Variational Imp statements}
 \label{fig:vimpstmt}
 \end{figure}
 
 \begin{figure}[H]
 \ContinuedFloat
+
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VS}$ \\ $\BigVSType$}
+}
+\end{center}
+
 \begin{mathpar}
-\BigVSat \and
-\BigVUnsat \and
 \BigVSkip \and
 \BigVAssn \and
 \BigVSeq \and
