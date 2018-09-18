@@ -50,16 +50,34 @@
 \newcommand{\Error}{E}
 \newcommand{\EList}{l}
 \newcommand{\Nil}{[]}
+\newcommand{\MNum}{m}
 \newcommand{\Nothing}{\bullet}
 \newcommand{\Empty}{\mathit{empty}}
 \newcommand{\Ins}[3]{\mathit{ins}((#1,#2),#3)}
 \newcommand{\StoreSynt}{
-S &::=& \Empty & \textit{Empty store} \\
+\Store &::=& \Empty & \textit{Empty store} \\
 & | & \Ins{\Var}{\Num}{\Store} & \textit{Insert value \Num\ as variable \Var\ in \Store} \\
+}
+\newcommand{\MaybeNumSynt}{
+\MNum &::=& \Nothing & \textit{Nothing} \\
+& | & \Num & \textit{Integer literal} \\
+& | & \tagtree{\Cond}{\MNum}{\MNum} & \textit{Choice} \\
+}
+\newcommand{\VStoreSynt}{
+\Store &::=& \Empty & \textit{Empty store} \\
+& | & \Ins{\Var}{\MNum}{\Store} & \textit{Insert value \MNum\ as variable \Var\ in \Store} \\
 }
 \newcommand{\ErrorSynt}{
 \Error &::=& \Nothing & \textit{No error} \\
 & | & \Num & \textit{Error with value \Num}
+}
+\newcommand{\ErrorListsSynt}{
+\EList &::=& \Nil & \textit{Nil} \\
+& | & (\Cond,\VNum):\EList & \textit{Cons} \\
+}
+\newcommand{\ErrorCtxSynt}{
+\Error &::=& \Nil & \textit{Nil} \\
+& | & \EList : \Error & \textit{Cons} \\ 
 }
 
 \newcommand{\BigA}[3]{(#1,#2) \Downarrow_A #3}

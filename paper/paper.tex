@@ -993,8 +993,10 @@ operations such as addition or comparison within a variational context.
 
 \begin{figure}[H]
 \begin{syntax}
+\text{(Variational optional integers)}\\
+\MaybeNumSynt
 \text{(Store)}\\
-\StoreSynt
+\VStoreSynt
 \text{(Variational integers)}\\
 \VIntSynt
 \text{(Variational booleans)}\\
@@ -1120,21 +1122,18 @@ values until we find one that has a condition that evaluates to \prog{True} unde
 
 \begin{figure}[H]
 \begin{syntax}
+\text{(Variational optional integers)}\\
+\MaybeNumSynt
 \text{(Store)}\\
-S &::=& S(C,x) & \textit{Lookup x in S with context C} \\
-& | & S[(C,x) \rightarrow u] & \textit{Update x in S to u with context C} \\
+\VStoreSynt
 \text{(Variational integers)}\\
-\bar{n} &::=& n & \textit{Integer literal} \\
-& | & \tagtree{C}{\bar{n}}{\bar{n}} & \textit{Choice} \\
+\VIntSynt
 \text{(Variational booleans)}\\
-\bar{b} &::=& b & \textit{Boolean literal} \\
-& | & \tagtree{C}{\bar{b}}{\bar{b}} & \textit{Choice} \\
+\VBoolSynt
 \text{(Error lists)} \\
-l &::=& [] & \textit{Nil} \\
-& | & (C,\bar{n}):l & \textit{Cons} \\
+\ErrorListsSynt
 \text{(Error context)} \\
-E &::=& [] & \textit{Nil} \\
-& | & l : E & \textit{Cons} \\ 
+\ErrorCtxSynt
 \end{syntax}
 \caption{Big-step semantics of Variational Imp statements}
 \label{fig:vimpstmt}
