@@ -361,21 +361,32 @@ This type-generic representation allows us to easily define some useful algebrai
 formula trees via typeclasses. Specifically, formula trees readily support implementation of the
 Functor, Applicative, and Monad typeclasses:
 
+\begin{minipage}{\linewidth}
 \begin{lstlisting}
 instance Functor V where
   fmap f (One a) = One (f a)
   fmap f (Chc d l r) = Chc d (fmap f l) (fmap f r)
+ 
+(<>) :: Functor f => (a -> b) -> f a -> f b  
+(<>) = fmap
   
 instance Applicative V where
   pure = One
   (One f) <*> v = fmap f v
   (Chc d l r) <*> v = Chc d (l <*> v) (r <*> v)
+
+liftA :: Applicative f => (a -> b) -> f a -> f b
+liftA f a = pure f <*> a
+
+liftA2 :: Applicative f => (a -> b -> c) -> f a -> f b -> f c
+liftA2 f x = (<*>) (fmap f x)
   
 instance Monad V where
   return = One
   (One v) >>= f = f v
   (Chc d l r) >>= f = Chc d (l >>= f) (r >>= f)
 \end{lstlisting}
+\end{minipage}
 
 Astute readers will note that because formula trees are merely a special class of binary tree with
 labeled nodes they share identical instances. The usefulness of defining these instances will be made
@@ -577,14 +588,14 @@ Consider the following program:
 \IF{$y$ is true}
 \STATE{\textbf{throw} $e$}
 \ENDIF
-\STATE{$x \coloneqq$ expensiveFn()}
+\STATE{$x \coloneqq$ expensiveInA()}
 \end{algorithmic}
 \end{samepage}
 
 In a non-variational context, the behavior of this program should be clear.
 If the variable $y$ evaluates to $\CCkeyw{true}$, then an error is thrown with value
 $e$. At this point evaluation should stop, meaning that the variable $x$ is never
-assigned in the final statement, avoiding the costly computation of expensiveFn. This effect of halting execution and
+assigned in the final statement, avoiding the costly computation of expensiveInA. This effect of halting execution and
 returning an error value is the essence of exceptions in non-variational settings.
 
 Now we consider the behavior of the same program in a variational context.
@@ -602,7 +613,7 @@ an exception should complete their execution uninhibited.
 
 We also don't want to simply continue evaluation
 in every variant regardless of whether or not we have encountered an error.
-Suppose that calling \texttt{expensiveFn} normally would evaluate to the variational value $\tagtree{A}{1}{2}$, but at considerable computational cost in both alternatives.
+Suppose that calling expensiveInA normally would evaluate to the variational value $\tagtree{A}{1}{2}$, but at considerable computational cost in the left alternative (hence the name).
 Because we know that the left alternative of $A$ will ultimately evaluate to the thrown exception $e$, we would
 like to avoid the cost involved in computing the value $1$ that we will just throw away later, mirroring how throwing an exception short-circuits evaluation in the
 non-variational setting. 
@@ -756,10 +767,115 @@ addition of choices into the expressions and statements of the language. We opte
 a generic formula tree implementation. While the end result should not depend on whether a generic or embedded implementation of choices is
 used, we felt that directly embedding choices led to cleaner semantic definitions.
 
+\begin{figure}[H]
+\begin{syntax}
+\text{(Variational optional integers)}\\
+\MaybeNumSynt
+\text{(Store)}\\
+\VStoreSynt
+\text{(Variational integers)}\\
+\VIntSynt
+\text{(Variational booleans)}\\
+\VBoolSynt
+\end{syntax}
+
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VA}$ \\ $\BigVAType$}
+}
+\end{center}
+
+\begin{mathpar}
+\BigVNum \and
+\BigVRef \and
+\BigVAdd \and
+\BigVAChcOne \and
+\BigVAChcTwo \and
+\BigVAChcThree
+\end{mathpar}
+\caption{Big-step semantics of Variational IMP expressions}
+\label{fig:h}
+\end{figure}
+
+\begin{figure}[H]
+\ContinuedFloat
+
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VB}$ \\ $\BigVBType$}
+}
+\end{center}
+
+\begin{mathpar}
+\BigVBool \and
+\BigVNot \and
+\BigVAnd \and
+\BigVLess \and
+\BigVBChcOne \and
+\BigVBChcTwo \and
+\BigVBChcThree
+\end{mathpar}
+\caption{Big-step semantics of Variational IMP expressions (continued)}
+\end{figure}
+
+
 We also present the big-step operational semantics for VIMP expressions and statements. In the following sections we will discuss specific elements of these definitions.
 We begin by defining variational operations, such as configuration and selection as explained in Chapter \ref{ch:bg}. We then examine the need for maintaining a variational context during execution, especially in its relation to the variable store. After, we turn to a discussion of
 catchable exceptions. Next we discuss interacting with control structures. Finally, we present the formal big-step operational semantics for VIMP expressions and statements.
 
+\begin{figure}[H]
+\begin{syntax}
+\text{(Variational optional integers)}\\
+\MaybeNumSynt
+\text{(Store)}\\
+\VStoreSynt
+\text{(Variational integers)}\\
+\VIntSynt
+\text{(Variational booleans)}\\
+\VBoolSynt
+\text{(Error lists)} \\
+\ErrorListsSynt
+\text{(Error context)} \\
+\ErrorCtxSynt
+\end{syntax}
+
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{V}$ \\ $\BigVType$}
+}
+\end{center}
+
+\begin{mathpar}
+\BigVSat \and
+\BigVUnsat
+\end{mathpar}
+
+\caption{Big-step semantics of Variational Imp statements}
+\label{fig:vimpstmt}
+\end{figure}
+
+\begin{figure}[H]
+\ContinuedFloat
+
+\begin{center}
+\framebox(150,50){
+    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VS}$ \\ $\BigVSType$}
+}
+\end{center}
+
+\begin{mathpar}
+\BigVSkip \and
+\BigVAssn \and
+\BigVSeq \and
+\BigVIf \and
+\BigVWhile \and
+\BigVThrow \and
+\BigVTry \and
+\BigVCatch \and
+\BigVChc
+\end{mathpar}
+\caption{Big-step semantics of Variational Imp statements (continued)}
+\end{figure}
 
 
 
@@ -1003,57 +1119,6 @@ a new variant via a choice that the configuration is satisfiable. Because except
 perform satisfiability checks before each expression. We utilize the standard applicative functor lifting functions, $\mathit{liftA}$ and $\mathit{liftA2}$ to support embedding
 operations such as addition or comparison within a variational context.
 
-\begin{figure}[H]
-\begin{syntax}
-\text{(Variational optional integers)}\\
-\MaybeNumSynt
-\text{(Store)}\\
-\VStoreSynt
-\text{(Variational integers)}\\
-\VIntSynt
-\text{(Variational booleans)}\\
-\VBoolSynt
-\end{syntax}
-
-\begin{center}
-\framebox(150,50){
-    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VA}$ \\ $\BigVAType$}
-}
-\end{center}
-
-\begin{mathpar}
-\BigVNum \and
-\BigVRef \and
-\BigVAdd \and
-\BigVAChcOne \and
-\BigVAChcTwo \and
-\BigVAChcThree
-\end{mathpar}
-\caption{Big-step semantics of Variational IMP expressions}
-\label{fig:h}
-\end{figure}
-
-\begin{figure}[H]
-\ContinuedFloat
-
-\begin{center}
-\framebox(150,50){
-    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VB}$ \\ $\BigVBType$}
-}
-\end{center}
-
-\begin{mathpar}
-\BigVBool \and
-\BigVNot \and
-\BigVAnd \and
-\BigVLess \and
-\BigVBChcOne \and
-\BigVBChcTwo \and
-\BigVBChcThree
-\end{mathpar}
-\caption{Big-step semantics of Variational IMP expressions (continued)}
-\end{figure}
-
 The rules \textsc{VA-Num}, \textsc{VA-Add}, \textsc{VB-Bool}, \textsc{VB-Not}, \textsc{VB-And}, and \textsc{VB-Less} are
 fairly straightforward extensions of their non-variational counterparts. We simply lift values and operations into the applicative
 functor for formula trees as in Section \ref{sec:purevar}. \textsc{VA-Ref} is the only rule that interacts with the variable store,
@@ -1143,61 +1208,11 @@ for these results. Sample configuration functions are given in Figure \ref{fig:c
 filtering out those that configure to \prog{Nothing}, and then unwrapping the remainder from \prog{Just}. Configuring the error context just requires us to search all of the
 values until we find one that has a condition that evaluates to \prog{True} under the given configuration.
 
-
-\begin{figure}[H]
-\begin{syntax}
-\text{(Variational optional integers)}\\
-\MaybeNumSynt
-\text{(Store)}\\
-\VStoreSynt
-\text{(Variational integers)}\\
-\VIntSynt
-\text{(Variational booleans)}\\
-\VBoolSynt
-\text{(Error lists)} \\
-\ErrorListsSynt
-\text{(Error context)} \\
-\ErrorCtxSynt
-\end{syntax}
-
-\begin{center}
-\framebox(150,50){
-    \parbox{125\unitlength}{Type of judgment $\Downarrow_{V}$ \\ $\BigVType$}
-}
-\end{center}
-
-\begin{mathpar}
-\BigVSat \and
-\BigVUnsat
-\end{mathpar}
-
-\caption{Big-step semantics of Variational Imp statements}
-\label{fig:vimpstmt}
-\end{figure}
-
-\begin{figure}[H]
-\ContinuedFloat
-
-\begin{center}
-\framebox(150,50){
-    \parbox{125\unitlength}{Type of judgment $\Downarrow_{VS}$ \\ $\BigVSType$}
-}
-\end{center}
-
-\begin{mathpar}
-\BigVSkip \and
-\BigVAssn \and
-\BigVSeq \and
-\BigVIf \and
-\BigVWhile \and
-\BigVThrow \and
-\BigVTry \and
-\BigVCatch \and
-\BigVChc
-\end{mathpar}
-\caption{Big-step semantics of Variational Imp statements (continued)}
-\end{figure}
-
+With our definition of both variational execution and configuration for VIMP, we are able to assert that VIMP satisfies the variation-preservation property (Section \ref{sec:props}).
+Put simply, the result of evaluating a VIMP program and then configuring it with a set of dimensions should yield the same result as configuring the VIMP program with the
+same set of dimensions and then evaluating it using our semantics for plain IMP.
+Indeed, we rely on this property throughout our semantics, as highlighted in our explanation above of the behavior of the \textsc{VS-Chc} rule. 
+We leave a formal proof that VIMP satisfies this property to future work. 
 
 \chapter{The Resource DSL}
 \label{ch:rdsl}
